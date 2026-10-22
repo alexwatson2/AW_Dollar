@@ -17,9 +17,20 @@ namespace AW_Dollar;
 /// with the taskbar automatically. Its background is fully transparent (a
 /// <see cref="Form.TransparencyKey"/>), so only the flag + price + trend text is drawn -
 /// the real taskbar pixels show through everywhere else, exactly like a native item.
+///
+/// Its own width always hugs its actual content (flag + price digits + trend arrow) as
+/// tightly as possible instead of using a fixed guess, so there is never a dead, empty
+/// gap between the numbers and the real tray icons next to them.
 /// </summary>
 public sealed class TaskbarPriceStrip : Form
 {
+    private const TextFormatFlags MeasureFlags = TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix;
+
+    private const int MarginLeft = 6;
+    private const int GapAfterFlag = 6;
+    private const int GapBeforeTrend = 5;
+    private const int MarginRight = 5;
+
     private static readonly Color KeyColor = Color.FromArgb(1, 2, 3); // never used elsewhere, safe transparency key
     private static readonly Color UpColor = Color.FromArgb(74, 222, 128);
     private static readonly Color DownColor = Color.FromArgb(248, 113, 113);
@@ -37,6 +48,11 @@ public sealed class TaskbarPriceStrip : Form
     private PriceSnapshot? _usd;
     private PriceSnapshot? _eur;
     private DisplaySize _displaySize = DisplaySize.Medium;
+
+    private Font? _priceFont;
+    private int _flagSize = 16;
+    private int _arrowSize = 10;
+    private int _desiredWidth = 150;
 
     /// <summary>Raised once if the taskbar can't be found/docked after several tries.</summary>
     public event EventHandler? DockingFailed;
@@ -57,7 +73,8 @@ public sealed class TaskbarPriceStrip : Form
         BackColor = KeyColor;
         TransparencyKey = KeyColor;
         DoubleBuffered = true;
-        Size = new Size(StripWidthFor(_displaySize), 48);
+        RecomputeLayout(48);
+        Size = new Size(_desiredWidth, 48);
         Location = new Point(-Width - 10, -100); // off-screen until docked
 
         _dockTimer = new System.Windows.Forms.Timer { Interval = 1200 };
@@ -81,15 +98,6 @@ public sealed class TaskbarPriceStrip : Form
             Invalidate();
         }
     }
-
-    private static int StripWidthFor(DisplaySize size) => size switch
-    {
-        DisplaySize.Small => 150,
-        DisplaySize.Medium => 182,
-        DisplaySize.Large => 208,
-        DisplaySize.ExtraLarge => 236,
-        _ => 182,
-    };
 
     private static float SizeScaleFor(DisplaySize size) => size switch
     {
@@ -187,28 +195,70 @@ public sealed class TaskbarPriceStrip : Form
         var trayRect = TaskbarInterop.GetScreenRect(_trayNotify);
         if (trayRect is null) return;
 
-        int width = StripWidthFor(_displaySize);
+        RecomputeLayout(trayRect.Value.Height);
+
         var target = new Rectangle(
-            trayRect.Value.Left - width,
+            trayRect.Value.Left - _desiredWidth,
             trayRect.Value.Top,
-            width,
+            _desiredWidth,
             trayRect.Value.Height);
 
-        if (target.Size != Size) Size = target.Size;
+        // One single atomic move+resize call (SetWindowPos inside MoveTo) - doing the
+        // resize and the reposition as two separate steps would, for a moment, grow the
+        // window to the right from its old top-left corner before snapping back into
+        // place, which looked like the strip "jumping" toward the tray on every resize.
         TaskbarInterop.MoveTo(Handle, _taskbar, target);
     }
 
     public void UpdateUsd(PriceSnapshot snapshot)
     {
         _usd = snapshot;
+        SyncWithTaskbar();
         Invalidate();
     }
 
     public void UpdateEur(PriceSnapshot snapshot)
     {
         _eur = snapshot;
+        SyncWithTaskbar();
         Invalidate();
     }
+
+    /// <summary>
+    /// Figures out the exact font size, flag size, trend-arrow size and overall strip
+    /// width needed for the current prices and display size, given how tall one row can
+    /// be (half of <paramref name="availableHeight"/>, the real taskbar's thickness).
+    /// Keeping this in one place guarantees the strip is always sized to its actual
+    /// content - no leftover empty space between the numbers and the tray icons.
+    /// </summary>
+    private void RecomputeLayout(int availableHeight)
+    {
+        int rowHeight = Math.Max(14, availableHeight / 2);
+        float scale = SizeScaleFor(_displaySize);
+
+        using var g = Graphics.FromHwnd(IntPtr.Zero);
+
+        float targetPx = Math.Clamp((rowHeight - 4) * scale, 9, Math.Max(9, rowHeight - 2));
+        var newFont = FitFontByHeight(g, targetPx, Math.Max(9, rowHeight - 2));
+
+        string usdText = FormatPrice(_usd);
+        string eurText = FormatPrice(_eur);
+        int textWidth = Math.Max(
+            TextRenderer.MeasureText(g, usdText, newFont, Size.Empty, MeasureFlags).Width,
+            TextRenderer.MeasureText(g, eurText, newFont, Size.Empty, MeasureFlags).Width);
+
+        _priceFont?.Dispose();
+        _priceFont = newFont;
+        _flagSize = (int)Math.Clamp((rowHeight - 4) * scale, 10, Math.Max(10, rowHeight - 2));
+        _arrowSize = (int)Math.Clamp(10 * scale, 8, Math.Max(8, rowHeight - 4));
+
+        _desiredWidth = MarginLeft + _flagSize + GapAfterFlag + textWidth + GapBeforeTrend + _arrowSize + MarginRight;
+    }
+
+    private static string FormatPrice(PriceSnapshot? snapshot) =>
+        snapshot is null || snapshot.PriceToman <= 0
+            ? "..."
+            : snapshot.PriceToman.ToString("N0", CultureInfo.InvariantCulture);
 
     protected override void OnPaint(PaintEventArgs e)
     {
@@ -218,22 +268,19 @@ public sealed class TaskbarPriceStrip : Form
         g.InterpolationMode = InterpolationMode.HighQualityBicubic;
         g.Clear(KeyColor);
 
+        if (_priceFont is null) RecomputeLayout(Height);
+        var font = _priceFont!;
+
         Color textColor = TaskbarInterop.IsSystemLightTheme() ? Color.Black : Color.White;
 
         int rowHeight = Height / 2;
-        DrawRow(g, 0, rowHeight, _usdFlag, _usd, textColor);
-        DrawRow(g, rowHeight, Height - rowHeight, _eurFlag, _eur, textColor);
+        DrawRow(g, 0, rowHeight, _usdFlag, _usd, textColor, font);
+        DrawRow(g, rowHeight, Height - rowHeight, _eurFlag, _eur, textColor, font);
     }
 
-    private void DrawRow(Graphics g, int top, int rowHeight, Bitmap flag, PriceSnapshot? snapshot, Color textColor)
+    private void DrawRow(Graphics g, int top, int rowHeight, Bitmap flag, PriceSnapshot? snapshot, Color textColor, Font font)
     {
-        float scale = SizeScaleFor(_displaySize);
-
-        // Use as much of the available row height as possible for the flag (it can never
-        // exceed the row itself, since the row height is capped by the real Windows
-        // taskbar's own thickness and we must not spill outside it).
-        int flagSize = (int)Math.Clamp((rowHeight - 4) * scale, 10, Math.Max(10, rowHeight - 2));
-        var flagRect = new Rectangle(6, top + (rowHeight - flagSize) / 2, flagSize, flagSize);
+        var flagRect = new Rectangle(MarginLeft, top + (rowHeight - _flagSize) / 2, _flagSize, _flagSize);
         using (var clip = new GraphicsPath())
         {
             clip.AddEllipse(flagRect);
@@ -243,50 +290,44 @@ public sealed class TaskbarPriceStrip : Form
             g.Clip = old;
         }
 
-        string text = snapshot is null || snapshot.PriceToman <= 0
-            ? "..."
-            : snapshot.PriceToman.ToString("N0", CultureInfo.InvariantCulture);
+        string text = FormatPrice(snapshot);
+        int textLeft = flagRect.Right + GapAfterFlag;
+        int textAreaRight = Math.Max(textLeft + 10, Width - MarginRight - _arrowSize - GapBeforeTrend);
+        var textRect = new Rectangle(textLeft, top, textAreaRight - textLeft, rowHeight);
 
-        int trendWidth = 16;
-        var textRect = new Rectangle(flagRect.Right + 6, top, Width - flagRect.Right - 6 - trendWidth, rowHeight);
-
-        // Pick the largest bold font (up to the user's chosen size) that still fits inside
-        // the row without being clipped, instead of a fixed guess - this fills the taskbar
-        // row as much as possible at every Windows DPI/taskbar-height combination.
-        float targetPx = Math.Clamp((rowHeight - 4) * scale, 9, Math.Max(9, rowHeight - 2));
-        using var font = FitFont(g, text, textRect.Width, textRect.Height, targetPx);
         TextRenderer.DrawText(
             g,
             text,
             font,
             textRect,
             textColor,
-            TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix);
+            TextFormatFlags.Left | TextFormatFlags.VerticalCenter | MeasureFlags);
 
         if (snapshot is not null && snapshot.Trend != PriceTrend.Unknown)
         {
-            int arrowSize = (int)Math.Clamp(10 * scale, 8, Math.Max(8, rowHeight - 4));
-            DrawTrendArrow(g, snapshot.Trend, new Rectangle(
-                Width - trendWidth + (trendWidth - arrowSize) / 2,
-                top + (rowHeight - arrowSize) / 2,
-                arrowSize,
-                arrowSize));
+            var arrowBounds = new Rectangle(
+                Width - MarginRight - _arrowSize,
+                top + (rowHeight - _arrowSize) / 2,
+                _arrowSize,
+                _arrowSize);
+            DrawTrendArrow(g, snapshot.Trend, arrowBounds);
         }
     }
 
     /// <summary>
     /// Finds the largest bold "Segoe UI" pixel size, starting at <paramref name="startPx"/>
-    /// and shrinking, whose rendered size still fits within the given box. Guarantees the
-    /// price text is never cut off, however big the user's chosen display size is.
+    /// and shrinking, whose rendered line height still fits within
+    /// <paramref name="maxHeight"/>. Guarantees the price text is never cut off
+    /// vertically, however big the user's chosen display size is.
     /// </summary>
-    private static Font FitFont(Graphics g, string text, int maxWidth, int maxHeight, float startPx)
+    private static Font FitFontByHeight(Graphics g, float startPx, float maxHeight)
     {
         float px = Math.Max(startPx, 8f);
         while (px > 8f)
         {
             var font = new Font("Segoe UI", px, FontStyle.Bold, GraphicsUnit.Pixel);
-            var measured = TextRenderer.MeasureText(g, text, font, new Size(int.MaxValue, int.MaxValue), TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix);
-            if (measured.Width <= maxWidth && measured.Height <= maxHeight)
+            int height = TextRenderer.MeasureText(g, "0", font, Size.Empty, MeasureFlags).Height;
+            if (height <= maxHeight)
             {
                 return font;
             }
@@ -354,6 +395,7 @@ public sealed class TaskbarPriceStrip : Form
             _dockTimer.Dispose();
             _usdFlag.Dispose();
             _eurFlag.Dispose();
+            _priceFont?.Dispose();
         }
         base.Dispose(disposing);
     }
