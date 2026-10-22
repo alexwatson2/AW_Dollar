@@ -1,5 +1,4 @@
 @echo off
-chcp 65001 >nul
 setlocal EnableDelayedExpansion
 
 rem ============================================================
@@ -14,8 +13,8 @@ set "EXE=%ROOT%src\AW_Dollar\bin\Release\net8.0-windows\AW_Dollar.exe"
 
 where dotnet >nul 2>nul
 if errorlevel 1 (
-    echo [AW Dollar] .NET SDK پیدا نشد.
-    echo .NET 8 SDK را از آدرس زیر نصب کنید و دوباره این فایل را اجرا کنید:
+    echo [AW Dollar] .NET SDK was not found.
+    echo Please install the .NET 8 SDK from the link below, then run this file again:
     echo https://dotnet.microsoft.com/download/dotnet/8.0
     echo.
     pause
@@ -23,28 +22,28 @@ if errorlevel 1 (
 )
 
 if not exist "%PROJECT%" (
-    echo [AW Dollar] فایل پروژه پیدا نشد: %PROJECT%
-    echo این فایل باید کنار پوشه src اجرا شود.
+    echo [AW Dollar] Project file not found: %PROJECT%
+    echo This script must stay next to the "src" folder.
     pause
     exit /b 1
 )
 
-echo [AW Dollar] در حال ساخت برنامه...
+echo [AW Dollar] Building the app...
 dotnet build "%PROJECT%" -c Release -v quiet
 if errorlevel 1 (
     echo.
-    echo [AW Dollar] ساخت برنامه با خطا مواجه شد. پیام بالا را بررسی کنید.
+    echo [AW Dollar] Build failed. See the output above for details.
     pause
     exit /b 1
 )
 
 if not exist "%EXE%" (
-    echo [AW Dollar] فایل اجرایی پیدا نشد: %EXE%
+    echo [AW Dollar] Executable not found: %EXE%
     pause
     exit /b 1
 )
 
-echo [AW Dollar] در حال اجرا...
+echo [AW Dollar] Starting...
 start "" "%EXE%"
 
 endlocal
