@@ -86,16 +86,13 @@ public sealed class TrayApplicationContext : ApplicationContext
     {
         // Couldn't attach to the real taskbar (unsupported Windows build, locked-down
         // Explorer, etc.) - fall back to the floating card so the prices are still visible.
+        // No Windows notification is shown for this; it fails/recovers silently.
         if (!_panel.Visible)
         {
             TogglePanel();
         }
 
-        _trayIcon.ShowBalloonTip(
-            5000,
-            "AW Dollar",
-            "اتصال به نوار وظیفه ممکن نشد؛ به‌جای آن کارت شناور قیمت نمایش داده شد.",
-            ToolTipIcon.Warning);
+        Debug.WriteLine("[AW_Dollar] could not dock onto the taskbar; showing the floating card instead.");
     }
 
     private ContextMenuStrip BuildMenu()
@@ -110,7 +107,7 @@ public sealed class TrayApplicationContext : ApplicationContext
         menu.Items.Add(new ToolStripSeparator());
 
         var refreshItem = new ToolStripMenuItem("به‌روزرسانی الان");
-        refreshItem.Click += async (_, _) => await RefreshAllAsync(manual: true);
+        refreshItem.Click += async (_, _) => await RefreshAllAsync();
         menu.Items.Add(refreshItem);
 
         var websiteItem = new ToolStripMenuItem("مشاهده در مرورگر (priceto.day)");
@@ -177,14 +174,14 @@ public sealed class TrayApplicationContext : ApplicationContext
         }
     }
 
-    private async Task RefreshAllAsync(bool manual = false)
+    private async Task RefreshAllAsync()
     {
         await Task.WhenAll(
-            RefreshOneAsync("usd", "دلار", manual, isUsd: true),
-            RefreshOneAsync("euro", "یورو", manual, isUsd: false));
+            RefreshOneAsync("usd", "دلار", isUsd: true),
+            RefreshOneAsync("euro", "یورو", isUsd: false));
     }
 
-    private async Task RefreshOneAsync(string apiSymbol, string displayNameFa, bool manual, bool isUsd)
+    private async Task RefreshOneAsync(string apiSymbol, string displayNameFa, bool isUsd)
     {
         var previous = isUsd ? _lastUsd : _lastEur;
 
@@ -199,13 +196,9 @@ public sealed class TrayApplicationContext : ApplicationContext
                     : PriceTrend.Flat;
             }
 
-            bool firstSuccess = previous is null;
+            // No Windows notification is shown for price updates (even manual ones) -
+            // the taskbar strip and tray tooltip are already always up to date.
             ApplySnapshot(isUsd, fresh);
-
-            if (manual || firstSuccess)
-            {
-                _trayIcon.ShowBalloonTip(3000, displayNameFa, $"{FormatToman(fresh.PriceToman)} تومان", ToolTipIcon.Info);
-            }
         }
         catch (Exception ex)
         {
