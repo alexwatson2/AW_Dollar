@@ -6,8 +6,8 @@ namespace AW_Dollar;
 internal static class Program
 {
     /// <summary>
-    /// App entry point. There is deliberately no main window: we just run an
-    /// ApplicationContext that owns the two taskbar tray icons (USD and EUR).
+    /// App entry point. Runs an ApplicationContext that owns a small tray icon plus the
+    /// borderless floating price card (<see cref="PricePanelForm"/>) showing USD/EUR.
     /// </summary>
     [STAThread]
     private static void Main()
