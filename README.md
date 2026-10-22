@@ -31,9 +31,22 @@
 
 > این پروژه باید روی یک سیستم **ویندوز** با **.NET 8 SDK** نصب‌شده Build شود (Windows Forms فقط روی ویندوز اجرا می‌شود).
 
-۱. [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0) را نصب کنید.
+### ساده‌ترین راه: فایل‌های `.bat`
 
-۲. از ریشه مخزن:
+۱. [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0) را نصب کنید.
+۲. روی **`start.bat`** (در ریشه مخزن) دوبار کلیک کنید.
+
+   این فایل خودش بررسی می‌کند .NET نصب است یا نه، برنامه را (در حالت Release) می‌سازد و بلافاصله اجرا می‌کند. بار اول چون باید build شود چند ثانیه طول می‌کشد؛ دفعات بعد که دوباره اجرایش کنید، چون از قبل ساخته شده خیلی سریع‌تر بالا می‌آید. اگر نیاز به rebuild باشد (مثلاً بعد از تغییر کد) خودش دوباره build می‌کند.
+
+۳. اگر می‌خواهید یک فایل `.exe` مستقل بسازید که روی هر ویندوزی حتی بدون نصب .NET اجرا شود، روی **`publish.bat`** دوبار کلیک کنید. خروجی در این مسیر ساخته می‌شود:
+
+   ```
+   src\AW_Dollar\bin\Release\net8.0-windows\win-x64\publish\AW_Dollar.exe
+   ```
+
+   همین یک فایل `.exe` را می‌توانید روی هر سیستم ویندوزی کپی و اجرا کنید.
+
+### روش دستی (برای توسعه‌دهنده‌ها)
 
 ```powershell
 cd src\AW_Dollar
@@ -42,25 +55,21 @@ dotnet run
 
 یا کل Solution را در **Visual Studio 2022** باز کنید (`AW_Dollar.sln`) و Run بزنید.
 
-۳. برای ساخت یک فایل اجرایی مستقل (بدون نیاز به نصب .NET روی سیستم مقصد):
+برای ساخت نسخه مستقل به‌صورت دستی (همان کاری که `publish.bat` انجام می‌دهد):
 
 ```powershell
 cd src\AW_Dollar
 dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
 ```
 
-فایل خروجی در مسیر زیر ساخته می‌شود:
-
-```
-src\AW_Dollar\bin\Release\net8.0-windows\win-x64\publish\AW_Dollar.exe
-```
-
-همین فایل `.exe` را اجرا کنید؛ بلافاصله کارت قیمت (گوشه پایین-راست صفحه، بالای Taskbar) و آیکون Tray ظاهر می‌شوند.
+با هر روش، به‌محض اجرا، بلافاصله کارت قیمت (گوشه پایین-راست صفحه، بالای Taskbar) و آیکون Tray ظاهر می‌شوند.
 
 ## ساختار پروژه
 
 ```
 AW_Dollar.sln
+start.bat                    ← دوبار کلیک = build (در صورت نیاز) + اجرا
+publish.bat                  ← دوبار کلیک = ساخت یک exe مستقل برای توزیع
 dollar.png, eruo.png         ← آیکون‌های پرچم جدید که ارائه دادید (در پروژه هم به صورت Resource جاسازی شده‌اند)
 dollar.svg, euro.svg         ← آیکون‌های اولیه (نگه‌داشته شده‌اند، ولی دیگر در UI استفاده نمی‌شوند)
 src/AW_Dollar/
