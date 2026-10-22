@@ -10,18 +10,19 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AssemblyName>AW_Dollar</AssemblyName>
     <RootNamespace>AW_Dollar</RootNamespace>
-    <!-- No window is ever shown; this keeps the taskbar free of a console/app window. -->
+    <!-- There is no classic MainForm; Program.cs runs an ApplicationContext that owns
+         the tray icon and a borderless floating price widget. -->
     <StartupObject>AW_Dollar.Program</StartupObject>
     <InvariantGlobalization>false</InvariantGlobalization>
     <Version>1.0.0</Version>
     <Product>AW Dollar</Product>
     <Company>AW Dollar</Company>
-    <Description>نمایش لحظه‌ای نرخ دلار و یورو (بازار آزاد) در Tray ویندوز</Description>
+    <Description>نمایش لحظه‌ای نرخ دلار و یورو (بازار آزاد) روی دسکتاپ و Tray ویندوز</Description>
   </PropertyGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="Resources\dollar_base.png" />
-    <EmbeddedResource Include="Resources\euro_base.png" />
+    <EmbeddedResource Include="Resources\usd_flag.png" />
+    <EmbeddedResource Include="Resources\eur_flag.png" />
   </ItemGroup>
 
 </Project>
