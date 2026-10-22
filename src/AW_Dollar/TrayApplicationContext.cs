@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.Globalization;
@@ -28,6 +29,7 @@ public sealed class TrayApplicationContext : ApplicationContext
     private readonly TaskbarPriceStrip _strip;
     private readonly PricePanelForm _panel;
     private ToolStripMenuItem _toggleCardItem = null!;
+    private readonly Dictionary<DisplaySize, ToolStripMenuItem> _sizeItems = new();
 
     private PriceSnapshot? _lastUsd;
     private PriceSnapshot? _lastEur;
@@ -35,8 +37,9 @@ public sealed class TrayApplicationContext : ApplicationContext
 
     public TrayApplicationContext()
     {
-        _strip = new TaskbarPriceStrip();
+        _strip = new TaskbarPriceStrip(DisplaySizeStore.Load());
         _strip.DockingFailed += OnDockingFailed;
+        _strip.DisplaySizeChangedByUser += (_, size) => SetDisplaySize(size);
 
         _panel = new PricePanelForm();
 
@@ -102,6 +105,8 @@ public sealed class TrayApplicationContext : ApplicationContext
         _toggleCardItem = new ToolStripMenuItem("نمایش کارت بزرگ قیمت");
         _toggleCardItem.Click += (_, _) => TogglePanel();
         menu.Items.Add(_toggleCardItem);
+
+        menu.Items.Add(BuildSizeMenu());
         menu.Items.Add(new ToolStripSeparator());
 
         var refreshItem = new ToolStripMenuItem("به‌روزرسانی الان");
@@ -124,6 +129,38 @@ public sealed class TrayApplicationContext : ApplicationContext
         menu.Items.Add(exitItem);
 
         return menu;
+    }
+
+    private ToolStripMenuItem BuildSizeMenu()
+    {
+        var sizeMenu = new ToolStripMenuItem("اندازه متن و آیکون روی Taskbar");
+
+        AddSizeOption(sizeMenu, DisplaySize.Small, "کوچک");
+        AddSizeOption(sizeMenu, DisplaySize.Medium, "متوسط (پیش‌فرض)");
+        AddSizeOption(sizeMenu, DisplaySize.Large, "بزرگ");
+        AddSizeOption(sizeMenu, DisplaySize.ExtraLarge, "خیلی بزرگ");
+
+        _sizeItems[_strip.DisplaySize].Checked = true;
+        return sizeMenu;
+    }
+
+    private void AddSizeOption(ToolStripMenuItem parent, DisplaySize size, string label)
+    {
+        var item = new ToolStripMenuItem(label) { CheckOnClick = false };
+        item.Click += (_, _) => SetDisplaySize(size);
+        parent.DropDownItems.Add(item);
+        _sizeItems[size] = item;
+    }
+
+    private void SetDisplaySize(DisplaySize size)
+    {
+        _strip.DisplaySize = size;
+        DisplaySizeStore.Save(size);
+
+        foreach (var pair in _sizeItems)
+        {
+            pair.Value.Checked = pair.Key == size;
+        }
     }
 
     private void TogglePanel()
