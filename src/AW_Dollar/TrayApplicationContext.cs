@@ -5,15 +5,18 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using AW_Dollar.Models;
+using AW_Dollar.Rendering;
 using AW_Dollar.Services;
 
 namespace AW_Dollar;
 
 /// <summary>
-/// Owns the lifetime of the whole app: one small NotifyIcon in the taskbar notification
-/// area (used only as a quick menu - show/hide, refresh, exit) plus the real UI, the
-/// borderless <see cref="PricePanelForm"/> card that shows the live USD/EUR rows.
-/// Both are refreshed together on a shared 30-minute timer.
+/// Owns the lifetime of the whole app. The real, always-visible UI is two small
+/// <see cref="NotifyIcon"/>s that live right inside the Windows taskbar's notification
+/// area (next to the clock/Wi-Fi/volume icons) - one for USD, one for EUR - each redrawn
+/// with the flag, the current price and an up/down trend triangle. A bigger, optional
+/// floating card (<see cref="PricePanelForm"/>) with the full numbers can be toggled from
+/// the tray menu for anyone who wants a larger view. Everything refreshes every 30 minutes.
 /// </summary>
 public sealed class TrayApplicationContext : ApplicationContext
 {
@@ -21,32 +24,33 @@ public sealed class TrayApplicationContext : ApplicationContext
 
     private readonly PriceApiClient _api = new();
     private readonly System.Windows.Forms.Timer _timer;
-    private readonly NotifyIcon _trayIcon;
     private readonly PricePanelForm _panel;
-    private ToolStripMenuItem _toggleItem = null!;
-    private ToolStripMenuItem _usdStatusItem = null!;
-    private ToolStripMenuItem _eurStatusItem = null!;
-
-    private PriceSnapshot? _lastUsd;
-    private PriceSnapshot? _lastEur;
+    private readonly CurrencyTray _usd;
+    private readonly CurrencyTray _eur;
+    private ToolStripMenuItem _toggleCardItem = null!;
     private bool _disposed;
 
     public TrayApplicationContext()
     {
         _panel = new PricePanelForm();
 
-        _trayIcon = new NotifyIcon
-        {
-            Icon = LoadAppIcon(),
-            Text = "AW Dollar - در حال دریافت قیمت...",
-            Visible = true,
-        };
+        _usd = new CurrencyTray("usd", "دلار", EmbeddedImageLoader.Load("usd_flag.png"));
+        _eur = new CurrencyTray("euro", "یورو", EmbeddedImageLoader.Load("eur_flag.png"));
 
-        _trayIcon.ContextMenuStrip = BuildMenu();
-        _trayIcon.DoubleClick += (_, _) => TogglePanel();
+        var menu = BuildMenu();
+        _usd.NotifyIcon.ContextMenuStrip = menu;
+        _eur.NotifyIcon.ContextMenuStrip = menu;
+        _panel.ContextMenuStrip = menu;
 
-        _panel.ContextMenuStrip = _trayIcon.ContextMenuStrip;
-        _panel.Show();
+        _usd.NotifyIcon.DoubleClick += (_, _) => TogglePanel();
+        _eur.NotifyIcon.DoubleClick += (_, _) => TogglePanel();
+
+        _usd.NotifyIcon.Icon = TrayIconRenderer.BuildLoadingIcon(_usd.Flag);
+        _eur.NotifyIcon.Icon = TrayIconRenderer.BuildLoadingIcon(_eur.Flag);
+        _usd.NotifyIcon.Text = "دلار - در حال دریافت قیمت...";
+        _eur.NotifyIcon.Text = "یورو - در حال دریافت قیمت...";
+        _usd.NotifyIcon.Visible = true;
+        _eur.NotifyIcon.Visible = true;
 
         _timer = new System.Windows.Forms.Timer { Interval = (int)RefreshInterval.TotalMilliseconds };
         _timer.Tick += async (_, _) => await RefreshAllAsync();
@@ -55,35 +59,14 @@ public sealed class TrayApplicationContext : ApplicationContext
         _ = RefreshAllAsync();
     }
 
-    private static Icon LoadAppIcon()
-    {
-        try
-        {
-            string? path = Application.ExecutablePath;
-            var icon = Icon.ExtractAssociatedIcon(path);
-            if (icon is not null) return icon;
-        }
-        catch
-        {
-            // fall through to the default icon below
-        }
-
-        return SystemIcons.Application;
-    }
-
     private ContextMenuStrip BuildMenu()
     {
         var menu = new ContextMenuStrip();
 
-        _usdStatusItem = new ToolStripMenuItem("دلار: در حال دریافت...") { Enabled = false };
-        _eurStatusItem = new ToolStripMenuItem("یورو: در حال دریافت...") { Enabled = false };
-        menu.Items.Add(_usdStatusItem);
-        menu.Items.Add(_eurStatusItem);
+        _toggleCardItem = new ToolStripMenuItem("نمایش کارت بزرگ قیمت");
+        _toggleCardItem.Click += (_, _) => TogglePanel();
+        menu.Items.Add(_toggleCardItem);
         menu.Items.Add(new ToolStripSeparator());
-
-        _toggleItem = new ToolStripMenuItem("مخفی کردن کارت قیمت");
-        _toggleItem.Click += (_, _) => TogglePanel();
-        menu.Items.Add(_toggleItem);
 
         var refreshItem = new ToolStripMenuItem("به‌روزرسانی الان");
         refreshItem.Click += async (_, _) => await RefreshAllAsync(manual: true);
@@ -112,97 +95,90 @@ public sealed class TrayApplicationContext : ApplicationContext
         if (_panel.Visible)
         {
             _panel.Hide();
-            _toggleItem.Text = "نمایش کارت قیمت";
+            _toggleCardItem.Text = "نمایش کارت بزرگ قیمت";
         }
         else
         {
             _panel.Show();
-            _toggleItem.Text = "مخفی کردن کارت قیمت";
+            _toggleCardItem.Text = "مخفی کردن کارت بزرگ قیمت";
         }
     }
 
     private async Task RefreshAllAsync(bool manual = false)
     {
         await Task.WhenAll(
-            RefreshOneAsync("usd", "دلار", manual, isUsd: true),
-            RefreshOneAsync("euro", "یورو", manual, isUsd: false));
+            RefreshOneAsync(_usd, manual),
+            RefreshOneAsync(_eur, manual));
     }
 
-    private async Task RefreshOneAsync(string apiSymbol, string displayNameFa, bool manual, bool isUsd)
+    private async Task RefreshOneAsync(CurrencyTray tray, bool manual)
     {
-        var previous = isUsd ? _lastUsd : _lastEur;
-
         try
         {
-            var fresh = await _api.GetLatestAsync(apiSymbol, displayNameFa, CancellationToken.None);
+            var fresh = await _api.GetLatestAsync(tray.ApiSymbol, tray.DisplayNameFa, CancellationToken.None);
 
-            if (previous is { PriceToman: > 0 })
+            if (tray.Last is { PriceToman: > 0 } previous)
             {
                 fresh.Trend = fresh.PriceToman > previous.PriceToman ? PriceTrend.Up
                     : fresh.PriceToman < previous.PriceToman ? PriceTrend.Down
                     : PriceTrend.Flat;
             }
 
-            bool firstSuccess = previous is null;
-            ApplySnapshot(isUsd, fresh);
+            bool firstSuccess = tray.Last is null;
+            tray.Last = fresh;
+            ApplyToIcon(tray, fresh);
 
             if (manual || firstSuccess)
             {
-                _trayIcon.ShowBalloonTip(3000, displayNameFa, $"{FormatToman(fresh.PriceToman)} تومان", ToolTipIcon.Info);
+                tray.NotifyIcon.ShowBalloonTip(3000, fresh.DisplayNameFa, $"{FormatToman(fresh.PriceToman)} تومان", ToolTipIcon.Info);
             }
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"[AW_Dollar] refresh failed for {apiSymbol}: {ex}");
+            Debug.WriteLine($"[AW_Dollar] refresh failed for {tray.ApiSymbol}: {ex}");
 
-            if (previous is not null)
+            if (tray.Last is { } stale)
             {
                 var staleCopy = new PriceSnapshot
                 {
-                    Symbol = previous.Symbol,
-                    DisplayNameFa = previous.DisplayNameFa,
-                    PriceToman = previous.PriceToman,
-                    HighToman = previous.HighToman,
-                    LowToman = previous.LowToman,
-                    UpdatedAtUtc = previous.UpdatedAtUtc,
-                    Trend = previous.Trend,
+                    Symbol = stale.Symbol,
+                    DisplayNameFa = stale.DisplayNameFa,
+                    PriceToman = stale.PriceToman,
+                    HighToman = stale.HighToman,
+                    LowToman = stale.LowToman,
+                    UpdatedAtUtc = stale.UpdatedAtUtc,
+                    Trend = stale.Trend,
                     IsStale = true,
                 };
-                ApplySnapshot(isUsd, staleCopy);
+                tray.Last = staleCopy;
+                ApplyToIcon(tray, staleCopy);
             }
             else
             {
-                var statusItem = isUsd ? _usdStatusItem : _eurStatusItem;
-                statusItem.Text = $"{displayNameFa}: خطا در دریافت قیمت";
+                var oldIcon = tray.NotifyIcon.Icon;
+                tray.NotifyIcon.Icon = TrayIconRenderer.BuildErrorIcon(tray.Flag);
+                oldIcon?.Dispose();
+                tray.NotifyIcon.Text = Truncate($"{tray.DisplayNameFa} - خطا در دریافت قیمت. برای تلاش مجدد کلیک کنید.");
             }
         }
     }
 
-    private void ApplySnapshot(bool isUsd, PriceSnapshot snapshot)
+    private static void ApplyToIcon(CurrencyTray tray, PriceSnapshot snapshot)
     {
-        if (isUsd)
-        {
-            _lastUsd = snapshot;
-            _panel.UpdateUsd(snapshot);
-        }
-        else
-        {
-            _lastEur = snapshot;
-            _panel.UpdateEur(snapshot);
-        }
+        var oldIcon = tray.NotifyIcon.Icon;
+        tray.NotifyIcon.Icon = TrayIconRenderer.BuildPriceIcon(snapshot, tray.Flag);
+        oldIcon?.Dispose();
 
-        string staleSuffix = snapshot.IsStale ? " (قیمت قبلی)" : string.Empty;
-        var statusItem = isUsd ? _usdStatusItem : _eurStatusItem;
-        statusItem.Text = $"{snapshot.DisplayNameFa}: {FormatToman(snapshot.PriceToman)} تومان{staleSuffix}";
+        string localTime = snapshot.UpdatedAtUtc == DateTime.MinValue
+            ? "نامشخص"
+            : snapshot.UpdatedAtUtc.ToLocalTime().ToString("HH:mm", CultureInfo.InvariantCulture);
 
-        UpdateTrayTooltip();
-    }
+        string staleSuffix = snapshot.IsStale ? " (قیمت قبلی - بروزرسانی ناموفق)" : string.Empty;
 
-    private void UpdateTrayTooltip()
-    {
-        string usdPart = _lastUsd is null ? "دلار: ..." : $"دلار: {FormatToman(_lastUsd.PriceToman)} تومان";
-        string eurPart = _lastEur is null ? "یورو: ..." : $"یورو: {FormatToman(_lastEur.PriceToman)} تومان";
-        _trayIcon.Text = Truncate($"{usdPart}\n{eurPart}");
+        tray.NotifyIcon.Text = Truncate(
+            $"{snapshot.DisplayNameFa} (بازار آزاد): {FormatToman(snapshot.PriceToman)} تومان{staleSuffix}\n" +
+            $"کمترین/بیشترین امروز: {FormatToman(snapshot.LowToman)} / {FormatToman(snapshot.HighToman)}\n" +
+            $"بروزرسانی: {localTime} | هر ۳۰ دقیقه");
     }
 
     private static string FormatToman(decimal value) => value.ToString("N0", CultureInfo.InvariantCulture);
@@ -225,7 +201,8 @@ public sealed class TrayApplicationContext : ApplicationContext
     private void ExitApplication()
     {
         _timer.Stop();
-        _trayIcon.Visible = false;
+        _usd.NotifyIcon.Visible = false;
+        _eur.NotifyIcon.Visible = false;
         _panel.CloseForReal();
         Dispose();
         Application.Exit();
@@ -239,11 +216,37 @@ public sealed class TrayApplicationContext : ApplicationContext
         if (disposing)
         {
             _timer.Dispose();
-            _trayIcon.Dispose();
+            _usd.Dispose();
+            _eur.Dispose();
             _panel.Dispose();
             _api.Dispose();
         }
 
         base.Dispose(disposing);
+    }
+
+    /// <summary>Everything one currency's tray icon needs: its flag, icon and last known price.</summary>
+    private sealed class CurrencyTray : IDisposable
+    {
+        public CurrencyTray(string apiSymbol, string displayNameFa, Bitmap flag)
+        {
+            ApiSymbol = apiSymbol;
+            DisplayNameFa = displayNameFa;
+            Flag = flag;
+            NotifyIcon = new NotifyIcon();
+        }
+
+        public string ApiSymbol { get; }
+        public string DisplayNameFa { get; }
+        public Bitmap Flag { get; }
+        public NotifyIcon NotifyIcon { get; }
+        public PriceSnapshot? Last { get; set; }
+
+        public void Dispose()
+        {
+            NotifyIcon.Visible = false;
+            NotifyIcon.Dispose();
+            Flag.Dispose();
+        }
     }
 }
