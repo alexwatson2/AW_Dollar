@@ -1,0 +1,16 @@
+## Build outputs
+bin/
+obj/
+*.user
+
+## Publish output
+publish/
+
+## IDE
+.vs/
+.idea/
+*.suo
+
+## OS
+Thumbs.db
+.DS_Store
