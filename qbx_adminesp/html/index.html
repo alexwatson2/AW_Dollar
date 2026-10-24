@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Qbox Admin ESP &amp; Aim Assist</title>
+    <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+    <!-- بوم شبیه‌ساز پیش‌نمایش مرورگر (در داخل FiveM به صورت خودکار غیرفعال و کاملاً مخفی است) -->
+    <canvas id="preview-canvas" class="hidden"></canvas>
+    <div id="preview-banner" class="preview-banner hidden" dir="rtl">
+        <span class="preview-dot"></span>
+        <span>حالت پیش‌نمایش زنده مرورگر (در سرور FiveM پس‌زمینه کاملاً شفاف است) — برای تست Aim Assist کلیک راست ماوس را نگه دارید</span>
+        <button id="preview-reopen-btn" class="preview-reopen-btn hidden" type="button">باز کردن منوی ادمین (F10)</button>
+    </div>
+
+    <!-- لایه شفاف دائمی روی تصویر بازی: دایره FOV و نشانگر وضعیت ادمین -->
+    <div id="hud-overlay" class="hud-overlay">
+        <!-- دایره FOV دقیق وسط صفحه -->
+        <svg id="fov-svg" class="fov-svg hidden" aria-hidden="true">
+            <circle id="fov-circle-shadow" cx="50%" cy="50%" r="100" />
+            <circle id="fov-circle" cx="50%" cy="50%" r="100" />
+        </svg>
+
+        <!-- نشانگر وضعیت کوچک گوشه بالا سمت راست -->
+        <div id="status-pill" class="status-pill hidden" dir="ltr">
+            <div class="status-pill-header">
+                <span class="pulse-indicator"></span>
+                <span class="status-title">QBOX ADMIN ESP</span>
+            </div>
+            <div class="status-tags">
+                <span id="badge-player" class="status-tag">
+                    <i id="dot-player" class="tag-dot"></i>
+                    PLAYER
+                </span>
+                <span id="badge-npc" class="status-tag">
+                    <i id="dot-npc" class="tag-dot"></i>
+                    NPC
+                </span>
+                <span id="badge-aim" class="status-tag">
+                    <i class="tag-dot aim-dot"></i>
+                    AIM
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- پنل اصلی تنظیمات ادمین -->
+    <div id="admin-panel" class="admin-panel hidden">
+        <!-- هدر قابل جابه‌جایی (Draggable Header) -->
+        <header id="panel-header" class="panel-header">
+            <div class="brand-group">
+                <div class="brand-icon">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                        <circle cx="12" cy="11" r="3"></circle>
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="panel-title">پنل مدیریت Admin ESP</h1>
+                    <p class="panel-subtitle">مخصوص ادمین‌های مجاز فریم‌ورک Qbox</p>
+                </div>
+            </div>
+            <div class="header-actions">
+                <span class="hotkey-hint" dir="ltr">ESC / F10</span>
+                <button id="btn-close" class="icon-btn" type="button" title="بستن پنل">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+        </header>
+
+        <!-- کلید اصلی روشن/خاموش کل سیستم ESP -->
+        <section class="master-bar">
+            <div class="master-info">
+                <span class="master-label">وضعیت کلی Admin ESP</span>
+                <span id="master-status-text" class="master-desc">غیرفعال — برای شروع سوییچ را روشن کنید</span>
+            </div>
+            <label class="switch switch-lg">
+                <input type="checkbox" id="opt-enabled" />
+                <span class="slider"></span>
+            </label>
+        </section>
+
+        <!-- تب‌های دسته‌بندی تنظیمات -->
+        <nav class="tabs-nav">
+            <button type="button" class="tab-btn active" data-tab="tab-core">
+                <span>اصلی و رنگ‌ها</span>
+            </button>
+            <button type="button" class="tab-btn" data-tab="tab-visuals">
+                <span>جزئیات کامل ESP</span>
+            </button>
+            <button type="button" class="tab-btn" data-tab="tab-aim">
+                <span>تنظیمات Aim Assist</span>
+            </button>
+        </nav>
+
+        <!-- محتوای تب‌ها -->
+        <div class="panel-body">
+            <!-- تب ۱: تنظیمات اصلی خواسته شده (Player + Color | NPC + Color | Aim Assist) -->
+            <div id="tab-core" class="tab-pane active">
+                <!-- کارت Player ESP -->
+                <div class="feature-card">
+                    <div class="card-top">
+                        <div class="card-title-wrap">
+                            <span id="preview-swatch-player" class="entity-badge" style="--badge-color: #FF0000;"></span>
+                            <div>
+                                <div class="card-title" dir="ltr">Player ESP <span class="fa-sub">(پلیرها)</span></div>
+                                <div class="card-hint">نمایش موقعیت، کادر و مشخصات پلیرهای سرور</div>
+                            </div>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="opt-playerEsp" />
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="color-control-row">
+                        <span class="color-row-label">رنگ Player <small>(پیش‌فرض: قرمز)</small></span>
+                        <div class="color-inputs" dir="ltr">
+                            <input type="color" id="opt-playerColor" value="#FF0000" class="color-Well" />
+                            <input type="text" id="hex-playerColor" value="#FF0000" maxlength="7" class="hex-input" spellcheck="false" />
+                        </div>
+                    </div>
+                    <div class="preset-swatches" data-target="playerColor" dir="ltr">
+                        <button type="button" class="swatch-btn" data-color="#FF0000" style="background:#FF0000" title="Default Red"></button>
+                        <button type="button" class="swatch-btn" data-color="#FF3B5C" style="background:#FF3B5C" title="Crimson"></button>
+                        <button type="button" class="swatch-btn" data-color="#FF8A00" style="background:#FF8A00" title="Orange"></button>
+                        <button type="button" class="swatch-btn" data-color="#FFD600" style="background:#FFD600" title="Yellow"></button>
+                        <button type="button" class="swatch-btn" data-color="#00E5FF" style="background:#00E5FF" title="Cyan"></button>
+                        <button type="button" class="swatch-btn" data-color="#A855F7" style="background:#A855F7" title="Purple"></button>
+                        <button type="button" class="swatch-btn" data-color="#FFFFFF" style="background:#FFFFFF" title="White"></button>
+                    </div>
+                </div>
+
+                <!-- کارت NPC ESP -->
+                <div class="feature-card">
+                    <div class="card-top">
+                        <div class="card-title-wrap">
+                            <span id="preview-swatch-npc" class="entity-badge" style="--badge-color: #00FF00;"></span>
+                            <div>
+                                <div class="card-title" dir="ltr">NPC ESP <span class="fa-sub">(ربات‌ها / Pedها)</span></div>
+                                <div class="card-hint">نمایش تمام NPCها و Pedهای اطراف در دنیای بازی</div>
+                            </div>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="opt-npcEsp" />
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="color-control-row">
+                        <span class="color-row-label">رنگ NPC <small>(پیش‌فرض: سبز)</small></span>
+                        <div class="color-inputs" dir="ltr">
+                            <input type="color" id="opt-npcColor" value="#00FF00" class="color-Well" />
+                            <input type="text" id="hex-npcColor" value="#00FF00" maxlength="7" class="hex-input" spellcheck="false" />
+                        </div>
+                    </div>
+                    <div class="preset-swatches" data-target="npcColor" dir="ltr">
+                        <button type="button" class="swatch-btn" data-color="#00FF00" style="background:#00FF00" title="Default Green"></button>
+                        <button type="button" class="swatch-btn" data-color="#10B981" style="background:#10B981" title="Emerald"></button>
+                        <button type="button" class="swatch-btn" data-color="#84CC16" style="background:#84CC16" title="Lime"></button>
+                        <button type="button" class="swatch-btn" data-color="#38BDF8" style="background:#38BDF8" title="Sky Blue"></button>
+                        <button type="button" class="swatch-btn" data-color="#F59E0B" style="background:#F59E0B" title="Amber"></button>
+                        <button type="button" class="swatch-btn" data-color="#EC4899" style="background:#EC4899" title="Pink"></button>
+                        <button type="button" class="swatch-btn" data-color="#94A3B8" style="background:#94A3B8" title="Slate"></button>
+                    </div>
+                </div>
+
+                <!-- کارت Aim Assist -->
+                <div class="feature-card">
+                    <div class="card-top">
+                        <div class="card-title-wrap">
+                            <span class="entity-badge aim-badge-icon">⊕</span>
+                            <div>
+                                <div class="card-title" dir="ltr">Aim Assist <span class="fa-sub">(کمک نشانه‌گیری)</span></div>
+                                <div class="card-hint">هدایت نرم دوربین روی اهداف داخل دایره FOV هنگام نشانه‌گیری</div>
+                            </div>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="opt-aimAssist" />
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="quick-sub-row">
+                        <span>تنظیمات دقیق FOV، استخوان هدف و نرمی در تب <b>«تنظیمات Aim Assist»</b> قابل تغییر است.</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- تب ۲: تمام قابلیت‌های ظاهری ESP -->
+            <div id="tab-visuals" class="tab-pane">
+                <div class="settings-group">
+                    <div class="group-heading">کادر و اسکلت (Box &amp; Skeleton)</div>
+
+                    <div class="setting-row">
+                        <div>
+                            <div class="setting-name">کادر دور کاراکتر (Box ESP)</div>
+                            <div class="setting-sub">نمایش باکس رنگی دور پلیرها و NPCها</div>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="opt-boxEsp" />
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="setting-row">
+                        <div class="setting-name">نوع استایل کادر (Box Style)</div>
+                        <div class="segmented-control" id="seg-boxStyle" dir="ltr">
+                            <button type="button" data-val="corner" class="seg-btn active">Corner</button>
+                            <button type="button" data-val="2d" class="seg-btn">Full 2D</button>
+                            <button type="button" data-val="3d" class="seg-btn">3D Box</button>
+                        </div>
+                    </div>
+
+                    <div class="setting-row">
+                        <div>
+                            <div class="setting-name">هایلایت داخل کادر (Chams Fill)</div>
+                            <div class="setting-sub">رنگ‌آمیزی نیمه‌شفاف داخل باکس کاراکتر</div>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="opt-boxFill" />
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="setting-row">
+                        <div>
+                            <div class="setting-name">اسکلت‌بندی کاراکتر (Skeleton ESP)</div>
+                            <div class="setting-sub">نمایش خطوط مفاصل و استخوان‌های بدن</div>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="opt-skeleton" />
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="setting-row">
+                        <div>
+                            <div class="setting-name">نشانگر سر (Head Dot)</div>
+                            <div class="setting-sub">نقطه دقیق روی استخوان سر</div>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="opt-headDot" />
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="settings-group">
+                    <div class="group-heading">خطوط راهنما و اطلاعات (Tracers &amp; Info)</div>
+
+                    <div class="setting-row">
+                        <div>
+                            <div class="setting-name">خطوط راهنما (Tracer Lines)</div>
+                            <div class="setting-sub">رسم خط مستقیم به سمت اهداف فعال</div>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="opt-tracers" />
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="setting-row">
+                        <div class="setting-name">مبدأ خطوط Tracer</div>
+                        <div class="segmented-control" id="seg-tracerOrigin" dir="ltr">
+                            <button type="button" data-val="bottom" class="seg-btn active">Bottom</button>
+                            <button type="button" data-val="center" class="seg-btn">Center</button>
+                            <button type="button" data-val="ped" class="seg-btn">Admin Ped</button>
+                        </div>
+                    </div>
+
+                    <div class="setting-row">
+                        <div>
+                            <div class="setting-name">نام کاراکتر و آیدی سرور (Names &amp; ID)</div>
+                            <div class="setting-sub">نمایش نام کاراکتر Qbox، نام اکانت و Server ID</div>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="opt-names" />
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="setting-row">
+                        <div>
+                            <div class="setting-name">نوار خون و زره (HP &amp; Armor Bar)</div>
+                            <div class="setting-sub">نوار عمودی داینامیک سلامتی و جلیقه ضدگلوله</div>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="opt-healthBar" />
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="setting-row">
+                        <div>
+                            <div class="setting-name">نمایش مسافت (Distance)</div>
+                            <div class="setting-sub">فاصله دقیق تا هدف بر حسب متر</div>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="opt-distance" />
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="setting-row">
+                        <div>
+                            <div class="setting-name">نام سلاح در دست (Weapon Info)</div>
+                            <div class="setting-sub">تشخیص و نمایش اسلحه فعلی پلیر یا NPC</div>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="opt-weaponInfo" />
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="setting-row">
+                        <div>
+                            <div class="setting-name">نمایش اجساد / Dead</div>
+                            <div class="setting-sub">ادامه نمایش پلیرها و NPCهای کشته شده</div>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="opt-showDead" />
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="setting-row">
+                        <div>
+                            <div class="setting-name">بلیپ روی مینی‌مپ (Admin Radar Blips)</div>
+                            <div class="setting-sub">نمایش موقعیت و جهت نگاه روی رادار بازی</div>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="opt-adminBlips" />
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="setting-row">
+                        <div>
+                            <div class="setting-name">نشانگر وضعیت گوشه صفحه (Status HUD)</div>
+                            <div class="setting-sub">نمایش وضعیت فعال بودن ESP در بالای تصویر</div>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="opt-showStatusHud" />
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="slider-block">
+                        <div class="slider-header">
+                            <span class="setting-name">حداکثر فاصله رندر ESP</span>
+                            <span id="val-maxDistance" class="slider-val" dir="ltr">300m</span>
+                        </div>
+                        <input type="range" id="opt-maxDistance" min="25" max="1000" step="25" value="300" class="range-input" dir="ltr" />
+                    </div>
+                </div>
+            </div>
+
+            <!-- تب ۳: تنظیمات کامل Aim Assist -->
+            <div id="tab-aim" class="tab-pane">
+                <div class="settings-group">
+                    <div class="group-heading">کنترل اصلی و اهداف Aim Assist</div>
+
+                    <div class="setting-row">
+                        <div>
+                            <div class="setting-name">فعال‌سازی Aim Assist</div>
+                            <div class="setting-sub">فعال هنگام نگه داشتن کلیک راست (نشانه‌گیری)</div>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="opt-aimAssist-mirror" />
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="setting-row">
+                        <div>
+                            <div class="setting-name">قفل روی پلیرها (Target Players)</div>
+                            <div class="setting-sub">امکان هدایت نشانه روی پلیرها</div>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="opt-aimTargetPlayers" />
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="setting-row">
+                        <div>
+                            <div class="setting-name">قفل روی NPCها (Target NPCs)</div>
+                            <div class="setting-sub">امکان هدایت نشانه روی ربات‌ها و Pedها</div>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="opt-aimTargetNpcs" />
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="setting-row">
+                        <div>
+                            <div class="setting-name">بررسی دید مستقیم (Visible Only)</div>
+                            <div class="setting-sub">عدم قفل روی اهداف پشت دیوار یا مانع</div>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="opt-aimVisibleOnly" />
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="setting-row">
+                        <div class="setting-name">ناحیه هدف (Target Bone)</div>
+                        <div class="segmented-control" id="seg-aimBone" dir="ltr">
+                            <button type="button" data-val="head" class="seg-btn active">Head</button>
+                            <button type="button" data-val="neck" class="seg-btn">Neck</button>
+                            <button type="button" data-val="chest" class="seg-btn">Chest</button>
+                            <button type="button" data-val="pelvis" class="seg-btn">Pelvis</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-group">
+                    <div class="group-heading">دایره FOV و نرمی حرکت (FOV &amp; Smoothness)</div>
+
+                    <div class="setting-row">
+                        <div>
+                            <div class="setting-name">نمایش دایره FOV وسط صفحه</div>
+                            <div class="setting-sub">نمایش محدوده دقیق تشخیص هدف</div>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="opt-showFov" />
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="setting-row">
+                        <div class="setting-name">رنگ دایره FOV</div>
+                        <div class="color-inputs" dir="ltr">
+                            <input type="color" id="opt-fovColor" value="#FFFFFF" class="color-Well" />
+                            <input type="text" id="hex-fovColor" value="#FFFFFF" maxlength="7" class="hex-input" spellcheck="false" />
+                        </div>
+                    </div>
+
+                    <div class="setting-row">
+                        <div>
+                            <div class="setting-name">خط نشانگر هدف قفل‌شده (Target Line)</div>
+                            <div class="setting-sub">خط راهنما از مرکز نشانه به هدف منتخب در FOV</div>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="opt-aimTargetLine" />
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="slider-block">
+                        <div class="slider-header">
+                            <span class="setting-name">شعاع دایره FOV</span>
+                            <span id="val-fovRadius" class="slider-val" dir="ltr">120px</span>
+                        </div>
+                        <input type="range" id="opt-fovRadius" min="30" max="350" step="5" value="120" class="range-input" dir="ltr" />
+                    </div>
+
+                    <div class="slider-block">
+                        <div class="slider-header">
+                            <span class="setting-name">نرمی حرکت دوربین (Smoothness)</span>
+                            <span id="val-aimSmooth" class="slider-val" dir="ltr">4.5</span>
+                        </div>
+                        <input type="range" id="opt-aimSmooth" min="1.0" max="15.0" step="0.5" value="4.5" class="range-input" dir="ltr" />
+                    </div>
+
+                    <div class="slider-block">
+                        <div class="slider-header">
+                            <span class="setting-name">حداکثر برد Aim Assist</span>
+                            <span id="val-aimMaxDistance" class="slider-val" dir="ltr">150m</span>
+                        </div>
+                        <input type="range" id="opt-aimMaxDistance" min="20" max="300" step="10" value="150" class="range-input" dir="ltr" />
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- فوتر پنل -->
+        <footer class="panel-footer">
+            <button id="btn-reset" type="button" class="btn-secondary">
+                بازگشت به پیش‌فرض (Red / Green)
+            </button>
+            <button id="btn-done" type="button" class="btn-primary">
+                ذخیره و بستن
+            </button>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
