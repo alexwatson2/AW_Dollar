@@ -1,6 +1,7 @@
 package com.aw.dollar;
 
 import org.json.JSONObject;
+import org.json.JSONArray;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.math.BigDecimal;
@@ -15,34 +16,79 @@ import java.util.TimeZone;
 public final class PriceApi {
     private PriceApi() { }
 
-    public static Price fetch(String symbol) throws Exception {
-        if (!symbol.equals("usd") && !symbol.equals("euro")) throw new IllegalArgumentException("Unknown currency");
-        HttpURLConnection connection = (HttpURLConnection) new URL("https://api.priceto.day/v1/latest/irr/" + symbol).openConnection();
-        connection.setConnectTimeout(15000);
-        connection.setReadTimeout(15000);
-        connection.setRequestProperty("User-Agent", "AW-Dollar-Android/1.0");
+    public static SourceResult fetch(PriceSource source, String symbol) {
+        long started = System.nanoTime();
         try {
-            if (connection.getResponseCode() != 200) throw new IllegalStateException("HTTP " + connection.getResponseCode());
+            String url = source.url + (source == PriceSource.PRICETODAY ? symbol : "");
+            Price quote = parse(source, symbol, request(url, source), System.currentTimeMillis());
+            return new SourceResult(source, symbol, quote, "", System.currentTimeMillis(),
+                    (System.nanoTime()-started)/1000000);
+        } catch (Exception e) {
+            String error = e instanceof java.net.SocketTimeoutException ? "مهلت پاسخ تمام شد" :
+                    e instanceof java.net.UnknownHostException ? "دسترسی به سرور ممکن نشد" :
+                    e instanceof IllegalArgumentException || e instanceof org.json.JSONException || e instanceof ArithmeticException
+                            ? "پاسخ نامعتبر یا قالب تغییرکرده" : "خطای ارتباط: " + e.getClass().getSimpleName();
+            return new SourceResult(source, symbol, null, error, System.currentTimeMillis(),
+                    (System.nanoTime()-started)/1000000);
+        }
+    }
+
+    private static String request(String url, PriceSource source) throws Exception {
+        HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
+        connection.setConnectTimeout(6000);
+        connection.setReadTimeout(6000);
+        connection.setRequestProperty("User-Agent", "dollar-Android/1.2 (+https://github.com/alexwatson2/AW_Dollar)");
+        if (source == PriceSource.IRAN_MARKET)
+            connection.setRequestProperty("Accept", "application/vnd.github.raw+json");
+        long deadline = System.nanoTime() + 12000000000L;
+        try {
+            int status = connection.getResponseCode();
+            if (status != 200) throw new java.io.IOException("HTTP " + status);
             ByteArrayOutputStream bytes = new ByteArrayOutputStream();
             try (InputStream stream = connection.getInputStream()) {
                 byte[] buffer = new byte[4096];
                 int n;
                 while ((n = stream.read(buffer)) != -1) {
-                    if (bytes.size() + n > 65536) throw new IllegalStateException("Response too large");
+                    if (Thread.currentThread().isInterrupted() || System.nanoTime() > deadline)
+                        throw new java.net.SocketTimeoutException("Deadline reached");
+                    if (bytes.size()+n > 1048576) throw new IllegalArgumentException("Response too large");
                     bytes.write(buffer, 0, n);
                 }
             }
-            JSONObject json = new JSONObject(bytes.toString("UTF-8"));
-            if (!json.optBoolean("success") || json.isNull("price")) throw new IllegalStateException("Invalid response");
-            long rial = new BigDecimal(json.getString("price")).longValueExact();
-            long now = System.currentTimeMillis();
-            // Never invent an upstream timestamp: an invalid date is an invalid quote.
-            long time = parseTime(json.getString("time"));
-            if (time > now + 5 * 60 * 1000L) throw new IllegalArgumentException("Future quote");
-            return new Price(symbol, rial, time, now);
-        } finally {
-            connection.disconnect();
+            return bytes.toString("UTF-8");
+        } finally { connection.disconnect(); }
+    }
+
+    static Price parse(PriceSource source, String symbol, String body, long now) throws Exception {
+        if (!symbol.equals("usd") && !symbol.equals("euro")) throw new IllegalArgumentException("Unknown currency");
+        JSONObject json = new JSONObject(body);
+        long rial, time;
+        if (source == PriceSource.PRICETODAY) {
+            if (!json.optBoolean("success")) throw new IllegalArgumentException("API failure");
+            rial = new BigDecimal(json.get("price").toString()).longValueExact();
+            time = parseTime(json.getString("time"));
+        } else if (source == PriceSource.IRAN_MARKET) {
+            JSONArray data = json.getJSONArray("data");
+            JSONObject item = null;
+            String key = symbol.equals("usd") ? "USD_IRR_FREE" : "EUR_IRR_FREE";
+            for (int i=0; i<data.length(); i++) {
+                JSONObject candidate = data.getJSONObject(i);
+                if (key.equals(candidate.optString("symbol"))) { item = candidate; break; }
+            }
+            if (item == null || !"iran_free".equals(item.getString("market"))
+                    || new BigDecimal(item.get("unit_size").toString()).compareTo(BigDecimal.ONE) != 0) throw new IllegalArgumentException("Wrong market or unit");
+            String currency = item.getString("currency");
+            if (!currency.equals("IRT") && !currency.equals("IRR")) throw new IllegalArgumentException("Unknown unit");
+            BigDecimal amount = new BigDecimal(item.get("price").toString());
+            rial = (currency.equals("IRT") ? amount.multiply(BigDecimal.TEN) : amount).longValueExact();
+            time = parseTime(item.getString("timestamp"));
+        } else {
+            String key = symbol.equals("usd") ? "dollar" : "euro";
+            rial = new BigDecimal(json.getJSONObject("rates").get(key).toString()).multiply(BigDecimal.TEN).longValueExact();
+            time = SourceTime.tehranJalali(json.getString("date"), json.getString("time"));
         }
+        if (time > now+5*60*1000L) throw new IllegalArgumentException("Future quote");
+        return new Price(symbol, rial, time, now, source.id);
     }
 
     static long parseTime(String value) {

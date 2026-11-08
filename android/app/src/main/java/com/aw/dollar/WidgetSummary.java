@@ -5,7 +5,7 @@ public final class WidgetSummary {
     private WidgetSummary() { }
 
     public static String trend(Price current, Price previous) {
-        if (current == null || previous == null || current.rial == previous.rial) return "—";
+        if (current == null || previous == null || !current.source.equals(previous.source) || current.rial == previous.rial) return "—";
         return current.rial > previous.rial ? "▲" : "▼";
     }
 

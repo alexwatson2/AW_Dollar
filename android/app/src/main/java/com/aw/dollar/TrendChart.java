@@ -40,11 +40,15 @@ public final class TrendChart extends View {
         long end = points.get(0).sourceTime;
         double range = Math.max(1.0, (double) max-min);
         Path line = new Path();
+        String previousSource = "";
         for (int i=points.size()-1; i>=0; i--) {
             Price p = points.get(i);
             float x = left + (float)((p.sourceTime-start)/(double)Math.max(1L, end-start))*(right-left);
             float y = max == min ? (bottom+top)/2 : bottom - (float)((p.rial-min)/range)*(bottom-top);
-            if (i == points.size()-1) line.moveTo(x,y); else line.lineTo(x,y);
+            if (!p.source.equals(previousSource)) line.moveTo(x,y); else line.lineTo(x,y);
+            previousSource = p.source;
+            pen.setColor(0xff2c786d);
+            c.drawCircle(x,y,2.5f*d,pen);
         }
         pen.setStyle(Paint.Style.STROKE);
         pen.setStrokeWidth(2.5f*d);

@@ -23,7 +23,9 @@ jobs:
           # Modern sdkmanager requires Java 21; app sources still target Java 17.
           java-version: '21'
       - name: Check compact widget layout
-        run: python3 ci/check_widget.py
+        run: |
+          python3 ci/check_widget.py
+          python3 ci/check_database.py
       - uses: gradle/actions/setup-gradle@v4
       - name: Prepare preinstalled Android SDK
         run: |

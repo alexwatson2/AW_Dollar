@@ -22,6 +22,13 @@ public class WidgetSummaryTest {
         assertEquals("—", WidgetSummary.trend(quote("usd", 2649000, 20), previous));
     }
 
+    @Test public void sourceSwitchDoesNotPretendToBeMarketMovement() {
+        Price original = new Price("usd",2649000,10,11,"pricetoday");
+        Price other = new Price("usd",2649500,20,21,"iranmarket");
+        assertEquals("—",WidgetSummary.trend(other,original));
+        assertTrue(Price.change(other,original).contains("تغییر منبع"));
+    }
+
     @Test public void combinedDateUsesOlderQuoteNotNewerFetch() {
         Price usd = quote("usd", 2649000, 10);
         Price euro = quote("euro", 2957500, 20);
