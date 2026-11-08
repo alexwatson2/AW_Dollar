@@ -1,7 +1,7 @@
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
-    android:minWidth="160dp" android:minHeight="140dp"
-    android:targetCellWidth="2" android:targetCellHeight="2"
-    android:minResizeWidth="150dp" android:minResizeHeight="130dp"
+    android:minWidth="140dp" android:minHeight="56dp"
+    android:targetCellWidth="2" android:targetCellHeight="1"
+    android:minResizeWidth="140dp" android:minResizeHeight="56dp"
     android:updatePeriodMillis="1800000" android:initialLayout="@layout/price_widget"
-    android:previewLayout="@layout/price_widget" android:resizeMode="horizontal|vertical"
+    android:previewLayout="@layout/price_widget" android:resizeMode="horizontal"
     android:widgetCategory="home_screen" android:description="@string/widget_description" />
