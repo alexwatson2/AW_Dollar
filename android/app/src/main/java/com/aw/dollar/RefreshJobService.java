@@ -13,7 +13,7 @@ public final class RefreshJobService extends JobService {
     // Lifecycle callbacks and this map are confined to the main thread.
     private final Map<JobParameters, Future<?>> tasks = new HashMap<>();
     @Override public boolean onStartJob(JobParameters params) {
-        Future<?> task = Refresh.IO.submit(() -> {
+        Future<?> task = Refresh.NETWORK.submit(() -> {
             boolean success = Refresh.fetchAll(getApplicationContext());
             new Handler(Looper.getMainLooper()).post(() -> {
                 if (tasks.remove(params) != null) jobFinished(params, !success);
