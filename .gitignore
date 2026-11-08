@@ -14,3 +14,11 @@ publish/
 ## OS
 Thumbs.db
 .DS_Store
+
+## Android
+.gradle/
+.kotlin/
+**/build/
+local.properties
+*.jks
+*.keystore
