@@ -1,7 +1,7 @@
 <resources>
     <string name="app_name">AW Dollar | نرخ ارز</string>
-    <string name="dollar_widget">AW Dollar · دلار</string>
-    <string name="euro_widget">AW Dollar · یورو</string>
-    <string name="widget_description">نرخ تومان و تغییر قیمت؛ برای دیدن تاریخچه لمس کنید.</string>
-    <string name="widget_open">باز کردن تاریخچهٔ قیمت ارز</string>
+    <string name="dollar_widget">AW Dollar · دلار و یورو</string>
+    <string name="widget_description">دلار و یورو در یک ویجت کوچک؛ قیمت به تومان، نشان روند و تاریخ آخرین نرخ.</string>
+    <string name="dollar_history">باز کردن تاریخچهٔ دلار</string>
+    <string name="euro_history">باز کردن تاریخچهٔ یورو</string>
 </resources>

@@ -172,7 +172,7 @@ public final class MainActivity extends Activity {
     private void pinWidget() {
         AppWidgetManager manager = AppWidgetManager.getInstance(this);
         if (Build.VERSION.SDK_INT >= 26 && manager.isRequestPinAppWidgetSupported()) {
-            manager.requestPinAppWidget(new ComponentName(this, symbol.equals("usd") ? DollarWidget.class : EuroWidget.class), null, null);
+            manager.requestPinAppWidget(new ComponentName(this, DollarWidget.class), null, null);
         } else {
             Toast.makeText(this, "روی فضای خالی صفحهٔ اصلی نگه دارید، ویجت‌ها را باز کنید و AW Dollar را انتخاب کنید.", Toast.LENGTH_LONG).show();
         }
