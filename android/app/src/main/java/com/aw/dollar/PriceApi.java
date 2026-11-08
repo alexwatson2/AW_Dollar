@@ -65,7 +65,7 @@ public final class PriceApi {
         long rial, time;
         if (source == PriceSource.PRICETODAY) {
             if (!json.optBoolean("success")) throw new IllegalArgumentException("API failure");
-            rial = new BigDecimal(json.getString("price")).longValueExact();
+            rial = new BigDecimal(json.get("price").toString()).longValueExact();
             time = parseTime(json.getString("time"));
         } else if (source == PriceSource.IRAN_MARKET) {
             JSONArray data = json.getJSONArray("data");
@@ -76,15 +76,15 @@ public final class PriceApi {
                 if (key.equals(candidate.optString("symbol"))) { item = candidate; break; }
             }
             if (item == null || !"iran_free".equals(item.getString("market"))
-                    || new BigDecimal(item.getString("unit_size")).compareTo(BigDecimal.ONE) != 0) throw new IllegalArgumentException("Wrong market or unit");
+                    || new BigDecimal(item.get("unit_size").toString()).compareTo(BigDecimal.ONE) != 0) throw new IllegalArgumentException("Wrong market or unit");
             String currency = item.getString("currency");
             if (!currency.equals("IRT") && !currency.equals("IRR")) throw new IllegalArgumentException("Unknown unit");
-            BigDecimal amount = new BigDecimal(item.getString("price"));
+            BigDecimal amount = new BigDecimal(item.get("price").toString());
             rial = (currency.equals("IRT") ? amount.multiply(BigDecimal.TEN) : amount).longValueExact();
             time = parseTime(item.getString("timestamp"));
         } else {
             String key = symbol.equals("usd") ? "dollar" : "euro";
-            rial = new BigDecimal(json.getJSONObject("rates").getString(key)).multiply(BigDecimal.TEN).longValueExact();
+            rial = new BigDecimal(json.getJSONObject("rates").get(key).toString()).multiply(BigDecimal.TEN).longValueExact();
             time = SourceTime.tehranJalali(json.getString("date"), json.getString("time"));
         }
         if (time > now+5*60*1000L) throw new IllegalArgumentException("Future quote");

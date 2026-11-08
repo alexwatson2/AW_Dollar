@@ -27,7 +27,7 @@ if code:
         for case in ET.parse(report).iter("testcase"):
             for failure in list(case.findall("failure")) + list(case.findall("error")):
                 tail.append(case.get("classname", "") + "." + case.get("name", "") + ": "
-                            + failure.get("message", "") + "\n" + (failure.text or "")[:2000] + "\n")
+                            + failure.get("message", "") + "\n")
     message = (name + " failed (exit " + str(code) + "):\n" + "".join(tail))[-12000:]
     message = message.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
     print("::error title=Android " + name + "::" + message, flush=True)
