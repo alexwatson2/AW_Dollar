@@ -4,7 +4,6 @@ import android.app.job.JobInfo;
 import android.app.job.JobScheduler;
 import android.content.ComponentName;
 import android.content.Context;
-import android.content.Intent;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -17,7 +16,9 @@ public final class Refresh {
     public static final ExecutorService IO = Executors.newSingleThreadExecutor();
     // Keep UI/database reads independent of potentially slow providers.
     public static final ExecutorService NETWORK = Executors.newSingleThreadExecutor();
-    public static final String CHANGED = "com.aw.dollar.PRICES_CHANGED";
+    private static final java.util.concurrent.CopyOnWriteArrayList<Runnable> LISTENERS = new java.util.concurrent.CopyOnWriteArrayList<>();
+    public static void addListener(Runnable listener) { LISTENERS.addIfAbsent(listener); }
+    public static void removeListener(Runnable listener) { LISTENERS.remove(listener); }
     private static final int JOB_ID = 301;
     private Refresh() { }
 
@@ -35,7 +36,7 @@ public final class Refresh {
         try (PriceStore store = new PriceStore(context)) {
             for (PriceSource source : PriceSource.values()) for (String symbol : new String[]{"usd","euro"})
                 store.status(source,symbol,"pending","",started,0);
-            changed(context);
+            changed();
             List<Callable<SourceResult>> tasks = new ArrayList<>();
             for (PriceSource source : PriceSource.values()) for (String symbol : new String[]{"usd","euro"})
                 tasks.add(() -> PriceApi.fetch(source,symbol));
@@ -57,7 +58,7 @@ public final class Refresh {
                                     .putLong(result.symbol+"_checked",result.checkedAt).apply();
                             PriceWidget.updateAll(context); // Publish immediately; do NOT wait for the slow sources.
                         }
-                        changed(context);
+                        changed();
                     }
                 }));
             } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
@@ -69,13 +70,15 @@ public final class Refresh {
                 for (String symbol : new String[]{"usd","euro"}) {
                     if (!won.contains(symbol)) context.getSharedPreferences("refresh",0).edit().putBoolean(symbol+"_failed",true).apply();
                 }
-                PriceWidget.updateAll(context); changed(context);
+                PriceWidget.updateAll(context); changed();
             }
         }
         return won.size() == 2;
     }
-    private static void changed(Context context) {
-        context.sendBroadcast(new Intent(CHANGED).setPackage(context.getPackageName()));
+    private static void changed() {
+        new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> {
+            for (Runnable listener : LISTENERS) listener.run();
+        });
     }
     public static boolean stale(Context context, Price price) {
         return price == null || context.getSharedPreferences("refresh",0).getBoolean(price.symbol+"_failed",false)

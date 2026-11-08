@@ -24,16 +24,10 @@ import java.util.List;
 import java.util.Locale;
 
 public final class MainActivity extends Activity {
-    private final android.content.BroadcastReceiver updates = new android.content.BroadcastReceiver() {
-        @Override public void onReceive(android.content.Context context, Intent intent) { load(); }
-    };
-    @Override protected void onStart() {
-        super.onStart();
-        android.content.IntentFilter filter = new android.content.IntentFilter(Refresh.CHANGED);
-        if (Build.VERSION.SDK_INT >= 33) registerReceiver(updates, filter, android.content.Context.RECEIVER_NOT_EXPORTED);
-        else registerReceiver(updates, filter);
-    }
-    @Override protected void onStop() { unregisterReceiver(updates); super.onStop(); }
+    // All components run in this process; no exported broadcast receiver is necessary.
+    private final Runnable updates = () -> load();
+    @Override protected void onStart() { super.onStart(); Refresh.addListener(updates); }
+    @Override protected void onStop() { Refresh.removeListener(updates); super.onStop(); }
 
     private String symbol = "usd";
     private int page;
