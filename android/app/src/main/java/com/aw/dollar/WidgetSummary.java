@@ -9,6 +9,9 @@ public final class WidgetSummary {
         return current.rial > previous.rial ? "▲" : "▼";
     }
 
+    /** Conservative minimum width across orientations, in dp; missing options use the compact layout. */
+    public static boolean useWideLayout(int minWidthDp) { return minWidthDp >= 240; }
+
     /** Shorten large toman prices to fit the compact two-column widget. */
     public static String compactPrice(long rial) {
         java.math.BigDecimal toman = java.math.BigDecimal.valueOf(rial, 1);
