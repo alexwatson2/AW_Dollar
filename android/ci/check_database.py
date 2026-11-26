@@ -60,8 +60,10 @@ class MigrationTest(unittest.TestCase):
         db = sqlite3.connect(":memory:")
         db.execute("CREATE TABLE quotes " + QUOTES)
         sql = "INSERT OR IGNORE INTO quotes(symbol,rial,source_time,received_time,source) VALUES(?,?,?,?,?)"
-        db.executemany(sql, [("usd",100,200,300,"iranmarket"), ("btc",180385168060,200,300,"iranmarket")])
+        db.executemany(sql, [("usd",100,200,300,"iranmarket"), ("btc",180385168060,250,300,"iranmarket"),
+                             ("btc_usd",60613640000,200,300,"iranmarket")])
         self.assertEqual([(180385168060,)], db.execute("SELECT rial FROM quotes WHERE symbol='btc'").fetchall())
+        self.assertEqual([(60613640000,)], db.execute("SELECT rial FROM quotes WHERE symbol='btc_usd'").fetchall())
         self.assertEqual([(100,)], db.execute("SELECT rial FROM quotes WHERE symbol='usd'").fetchall())
 
     def test_error_status_does_not_delete_source_cache(self):

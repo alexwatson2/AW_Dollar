@@ -46,8 +46,9 @@ public final class MainActivity extends Activity {
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
         if (state != null) {
-            symbol = state.getString("symbol", "usd");
-            page = state.getInt("page", 0);
+            String saved = state.getString("symbol", "usd");
+            symbol = normalizeSymbol(saved);
+            page = "btc".equals(saved) ? 0 : state.getInt("page", 0);
         } else readIntent(getIntent());
         Refresh.schedule(this);
     }
@@ -60,8 +61,11 @@ public final class MainActivity extends Activity {
         load();
     }
     private void readIntent(Intent intent) {
-        String requested = intent.getStringExtra("symbol");
-        symbol = "euro".equals(requested) || "usdt".equals(requested) || "btc".equals(requested) ? requested : "usd";
+        symbol = normalizeSymbol(intent.getStringExtra("symbol"));
+    }
+    private static String normalizeSymbol(String requested) {
+        if ("btc".equals(requested) || "btc_usd".equals(requested)) return "btc_usd";
+        return "euro".equals(requested) || "usdt".equals(requested) ? requested : "usd";
     }
     @Override protected void onSaveInstanceState(Bundle state) {
         state.putString("symbol", symbol); state.putInt("page", page); super.onSaveInstanceState(state);
@@ -70,7 +74,7 @@ public final class MainActivity extends Activity {
         super.onResume();
         load();
         long checked = getSharedPreferences("refresh", 0).getLong(symbol + "_checked", 0);
-        if (getSharedPreferences("refresh",0).getLong("sources_checked",0) == 0 || System.currentTimeMillis()-checked >= 30*60*1000L) refresh();
+        if (getSharedPreferences("refresh",0).getLong("sources_checked",0) == 0 || getSharedPreferences("refresh",0).getLong("btc_usd_checked",0) == 0 || System.currentTimeMillis()-checked >= 30*60*1000L) refresh();
         handler.postDelayed(ticker, 30000);
     }
     @Override protected void onPause() { handler.removeCallbacks(ticker); super.onPause(); }
@@ -103,7 +107,7 @@ public final class MainActivity extends Activity {
                 List<SourceSnapshot> usdSources = store.sources("usd");
                 List<SourceSnapshot> euroSources = store.sources("euro");
                 List<SourceSnapshot> usdtSources = store.sources("usdt");
-                List<SourceSnapshot> btcSources = store.sources("btc");
+                List<SourceSnapshot> btcSources = store.sources("btc_usd");
                 runOnUiThread(() -> {
                     if (!isDestroyed() && generation == request) render(latest, rows, count, usdSources, euroSources, usdtSources, btcSources);
                 });
@@ -139,26 +143,26 @@ public final class MainActivity extends Activity {
         scroll.post(() -> scroll.scrollTo(0,previousY));
         text(body, "dollar", 13, 0xff2c786d).setTypeface(null, Typeface.BOLD);
         text(body, "نبض ارز، روی صفحهٔ تو", 26, 0xff183d38);
-        text(body, "بازار آزاد ایران · قیمت‌ها به تومان", 13, 0xff758780);
-        text(body, "در ویجت، M یعنی میلیون و B یعنی میلیارد تومان؛ عدد کوتاه‌شده تقریبی است.", 12, 0xff758780);
+        text(body, "دلار، یورو و تتر به تومان · بیت‌کوین به دلار", 13, 0xff758780);
+        text(body, "در ویجت، M و B برای میلیون و میلیارد تومان‌اند؛ بیت‌کوین به دلار گرد می‌شود.", 12, 0xff758780);
         LinearLayout tabs = horizontal(body);
         button(tabs, symbol.equals("usd") ? "● دلار 🇺🇸" : "دلار 🇺🇸", () -> select("usd"));
         button(tabs, symbol.equals("euro") ? "● یورو 🇪🇺" : "یورو 🇪🇺", () -> select("euro"));
 
         LinearLayout cryptoTabs = horizontal(body);
         button(cryptoTabs, symbol.equals("usdt") ? "● تتر" : "تتر", () -> select("usdt"));
-        button(cryptoTabs, symbol.equals("btc") ? "● بیت‌کوین" : "بیت‌کوین", () -> select("btc"));
+        button(cryptoTabs, symbol.equals("btc_usd") ? "● بیت‌کوین" : "بیت‌کوین", () -> select("btc_usd"));
 
         Price current = latest.isEmpty() ? null : latest.get(0);
         Price previous = latest.size() > 1 ? latest.get(1) : null;
         LinearLayout hero = card(body);
         text(hero, symbol.equals("usd") ? "🇺🇸   US Dollar" : symbol.equals("euro") ? "🇪🇺   Euro" : symbol.equals("usdt") ? "₮   Tether (USDT)" : "₿   Bitcoin (BTC)", 18, 0xff56716e).setTextDirection(View.TEXT_DIRECTION_LTR);
-        TextView value = text(hero, current == null ? "—" : Price.toman(current.rial), symbol.equals("btc") ? 25 : 44, 0xff183d38);
+        TextView value = text(hero, current == null ? "—" : Price.amount(symbol, current.minorUnits), symbol.equals("btc_usd") ? 30 : 44, 0xff183d38);
         value.setTextDirection(View.TEXT_DIRECTION_LTR);
         value.setGravity(Gravity.CENTER);
-        text(hero, "تومان", 13, 0xff758780).setGravity(Gravity.CENTER);
-        text(hero, Price.change(current, previous) + (previous == null || current == null || !current.source.equals(previous.source) ? "" : " تومان نسبت به ثبت قبلی"), 15,
-                current == null || previous == null || !current.source.equals(previous.source) ? 0xff758780 : current.rial < previous.rial ? 0xffb25764 : 0xff258270);
+        text(hero, Price.unit(symbol), 13, 0xff758780).setGravity(Gravity.CENTER);
+        text(hero, Price.change(current, previous) + (previous == null || current == null || !current.source.equals(previous.source) ? "" : " " + Price.unit(symbol) + " نسبت به ثبت قبلی"), 15,
+                current == null || previous == null || !current.source.equals(previous.source) ? 0xff758780 : current.minorUnits < previous.minorUnits ? 0xffb25764 : 0xff258270);
         text(hero, current == null ? "هنوز نرخی دریافت نشده؛ اینترنت را بررسی و به‌روزرسانی کنید."
                 : (Refresh.stale(this, current) ? "نرخ ذخیره‌شده / قدیمی\n" : "") + "زمان منبع: " + stamp(current.sourceTime)
                 + "\nدریافت در گوشی: " + stamp(current.receivedTime), 12, 0xff758780);
@@ -175,7 +179,7 @@ public final class MainActivity extends Activity {
             sourceQuote(sourceCard, "یورو", euro);
             if (usd.source.supports("usdt")) sourceQuote(sourceCard, "تتر", usdtSources.get(i));
             else text(sourceCard, "تتر: این منبع پشتیبانی نمی‌کند", 12, 0xff758780);
-            if (usd.source.supports("btc")) sourceQuote(sourceCard, "بیت‌کوین", btcSources.get(i));
+            if (usd.source.supports("btc_usd")) sourceQuote(sourceCard, "بیت‌کوین", btcSources.get(i));
             else text(sourceCard, "بیت‌کوین: این منبع پشتیبانی نمی‌کند", 12, 0xff758780);
             text(sourceCard, usd.source.url, 10, 0xff758780).setTextDirection(View.TEXT_DIRECTION_LTR);
             if (usd.source == PriceSource.IRAN_MARKET) text(sourceCard, PriceApi.BITCOIN_URL, 10, 0xff758780).setTextDirection(View.TEXT_DIRECTION_LTR);
@@ -189,6 +193,7 @@ public final class MainActivity extends Activity {
         button(tools, "افزودن ویجت ＋", this::pinWidget);
         button(tools, "خروجی CSV", this::export);
         text(body, "تاریخچهٔ نرخ منتخب ویجت", 22, 0xff183d38);
+        if (Price.isDollarBitcoin(symbol)) text(body, "تاریخچهٔ دلاری بیت‌کوین جداگانه ثبت می‌شود؛ سوابق تومانی قبلی در CSV حفظ شده‌اند.", 12, 0xff758780);
         text(body, count + " نرخ ذخیره‌شده · تاریخ میلادی، ساعت محلی گوشی", 12, 0xff758780);
         if (rows.isEmpty()) text(body, "تاریخچه از اولین دریافت روی همین گوشی شروع می‌شود؛ سوابق بازار قبل از نصب در دسترس نیست.", 14, 0xff758780);
         int visible = Math.min(PAGE_SIZE, rows.size());
@@ -196,10 +201,10 @@ public final class MainActivity extends Activity {
             Price row = rows.get(i);
             Price before = i+1 < rows.size() ? rows.get(i+1) : null;
             LinearLayout item = card(body);
-            TextView priceText = text(item, Price.toman(row.rial) + " تومان", 23, 0xff183d38);
+            TextView priceText = text(item, Price.amount(row.symbol, row.minorUnits) + " " + Price.unit(row.symbol), 23, 0xff183d38);
             priceText.setTextDirection(View.TEXT_DIRECTION_LTR);
-            text(item, Price.change(row, before), 14, before == null || !row.source.equals(before.source) || row.rial == before.rial ? 0xff758780
-                    : row.rial > before.rial ? 0xff258270 : 0xffb25764);
+            text(item, Price.change(row, before) + (Price.isDollarBitcoin(row.symbol) && before != null && row.source.equals(before.source) && row.minorUnits != before.minorUnits ? " دلار" : ""), 14, before == null || !row.source.equals(before.source) || row.minorUnits == before.minorUnits ? 0xff758780
+                    : row.minorUnits > before.minorUnits ? 0xff258270 : 0xffb25764);
             text(item, "API: " + PriceSource.byId(row.source).title + "\nزمان منبع: " + stamp(row.sourceTime) + "\nثبت در گوشی: " + stamp(row.receivedTime), 12, 0xff758780);
         }
         LinearLayout pages = horizontal(body);
@@ -210,7 +215,7 @@ public final class MainActivity extends Activity {
     }
 
     private void sourceQuote(LinearLayout parent, String name, SourceSnapshot snapshot) {
-        String amount = snapshot.price == null ? "—" : Price.toman(snapshot.price.rial) + " تومان";
+        String amount = snapshot.price == null ? "—" : Price.amount(snapshot.price.symbol, snapshot.price.minorUnits) + " " + Price.unit(snapshot.price.symbol);
         text(parent, name + ": " + amount, 20, 0xff183d38);
         String state;
         if (snapshot.status.equals("pending")) state = "در حال بررسی…";
@@ -252,7 +257,7 @@ public final class MainActivity extends Activity {
                 if (output == null) throw new java.io.IOException("No output stream");
                 try (OutputStreamWriter writer = new OutputStreamWriter(output, StandardCharsets.UTF_8)) {
                     writer.write('\ufeff');
-                    writer.write("symbol,source,price_toman,change_toman,source_time_utc,received_time_utc\n");
+                    writer.write("symbol,source,price_toman,change_toman,source_time_utc,received_time_utc,price_usd,change_usd\n");
                     SimpleDateFormat utc = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US);
                     utc.setTimeZone(java.util.TimeZone.getTimeZone("UTC"));
                     java.util.Map<String, Long> previousBySource = new java.util.HashMap<>();
@@ -263,10 +268,11 @@ public final class MainActivity extends Activity {
                             long rial = c.getLong(1);
                             String source = c.getString(4), key = s + ":" + source;
                             Long before = previousBySource.put(key, rial);
-                            // Ungrouped decimal numbers so separators never split CSV fields.
-                            writer.write(s + "," + source + "," + java.math.BigDecimal.valueOf(rial, 1).toPlainString() + ","
-                                    + (before != null ? java.math.BigDecimal.valueOf(rial-before, 1).toPlainString() : "")
-                                    + "," + utc.format(c.getLong(2)) + "," + utc.format(c.getLong(3)) + "\n");
+                            // Preserve legacy toman columns; dollar BTC is exported in separate USD columns.
+                            String[] columns = Price.csvColumns(s, rial, before);
+                            writer.write(s + "," + source + "," + columns[0] + "," + columns[1] + ","
+                                    + utc.format(c.getLong(2)) + "," + utc.format(c.getLong(3)) + ","
+                                    + columns[2] + "," + columns[3] + "\n");
                         }
                     }
                 }

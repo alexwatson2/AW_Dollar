@@ -32,10 +32,10 @@ public final class TrendChart extends View {
             return;
         }
         long min = Long.MAX_VALUE, max = 0;
-        for (Price p : points) { min = Math.min(min, p.rial); max = Math.max(max, p.rial); }
-        c.drawText(Price.toman(max), left, 16*d, pen);
+        for (Price p : points) { min = Math.min(min, p.minorUnits); max = Math.max(max, p.minorUnits); }
+        c.drawText(Price.amount(points.get(0).symbol, max), left, 16*d, pen);
         pen.setTextAlign(Paint.Align.RIGHT);
-        c.drawText(Price.toman(min), right, 16*d, pen);
+        c.drawText(Price.amount(points.get(0).symbol, min), right, 16*d, pen);
         long start = points.get(points.size()-1).sourceTime;
         long end = points.get(0).sourceTime;
         double range = Math.max(1.0, (double) max-min);
@@ -44,7 +44,7 @@ public final class TrendChart extends View {
         for (int i=points.size()-1; i>=0; i--) {
             Price p = points.get(i);
             float x = left + (float)((p.sourceTime-start)/(double)Math.max(1L, end-start))*(right-left);
-            float y = max == min ? (bottom+top)/2 : bottom - (float)((p.rial-min)/range)*(bottom-top);
+            float y = max == min ? (bottom+top)/2 : bottom - (float)((p.minorUnits-min)/range)*(bottom-top);
             if (!p.source.equals(previousSource)) line.moveTo(x,y); else line.lineTo(x,y);
             previousSource = p.source;
             pen.setColor(0xff2c786d);

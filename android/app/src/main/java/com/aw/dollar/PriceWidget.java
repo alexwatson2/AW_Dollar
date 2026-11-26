@@ -48,7 +48,7 @@ public abstract class PriceWidget extends AppWidgetProvider {
             usd = store.history("usd", 2, 0);
             euro = store.history("euro", 2, 0);
             usdt = store.history("usdt", 2, 0);
-            btc = store.history("btc", 2, 0);
+            btc = store.history("btc_usd", 2, 0);
         }
         long updatedAt = WidgetSummary.updatedAt(latest(usd), latest(euro), latest(usdt), latest(btc));
         for (int id : ids) {
@@ -59,7 +59,7 @@ public abstract class PriceWidget extends AppWidgetProvider {
             bindRow(context, views, id, "usd", usd, R.id.usd_row, R.id.usd_price, R.id.usd_trend);
             bindRow(context, views, id, "euro", euro, R.id.eur_row, R.id.eur_price, R.id.eur_trend);
             bindRow(context, views, id, "usdt", usdt, R.id.usdt_row, R.id.usdt_price, R.id.usdt_trend);
-            bindRow(context, views, id, "btc", btc, R.id.btc_row, R.id.btc_price, R.id.btc_trend);
+            bindRow(context, views, id, "btc_usd", btc, R.id.btc_row, R.id.btc_price, R.id.btc_trend);
             String stamp = updatedAt == 0 ? "—" :
                     new SimpleDateFormat("yyyy/MM/dd HH:mm", Locale.US).format(updatedAt);
             views.setTextViewText(R.id.updated, stamp);
@@ -79,15 +79,15 @@ public abstract class PriceWidget extends AppWidgetProvider {
                                 int rowId, int priceId, int trendId) {
         Price current = latest(prices);
         Price previous = prices.size() < 2 ? null : prices.get(1);
-        String value = current == null ? "—" : WidgetSummary.compactPrice(current.rial);
+        String value = current == null ? "—" : (Price.isDollarBitcoin(symbol) ? WidgetSummary.bitcoinPrice(current.minorUnits) : WidgetSummary.compactPrice(current.minorUnits));
         String trend = WidgetSummary.trend(current, previous);
         views.setTextViewText(priceId, value);
         views.setTextViewText(trendId, trend);
         views.setTextColor(trendId, trend.equals("—") ? 0xffb7bdc4 :
-                current.rial > previous.rial ? 0xff72d5ad : 0xffff8e99);
+                current.minorUnits > previous.minorUnits ? 0xff72d5ad : 0xffff8e99);
         String name = symbol.equals("usd") ? "دلار" : symbol.equals("euro") ? "یورو" : symbol.equals("usdt") ? "تتر" : "بیت‌کوین";
         views.setContentDescription(rowId, name + ": " + (current == null ? "هنوز دریافت نشده" :
-                Price.toman(current.rial) + " تومان؛ " + Price.change(current, previous)) + "؛ باز کردن تاریخچه");
+                Price.amount(symbol, current.minorUnits) + " " + Price.unit(symbol) + "؛ " + Price.change(current, previous)) + "؛ باز کردن تاریخچه");
         views.setOnClickPendingIntent(rowId, openCurrency(context, id, symbol));
     }
 

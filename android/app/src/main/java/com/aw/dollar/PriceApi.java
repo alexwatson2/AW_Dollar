@@ -20,7 +20,7 @@ public final class PriceApi {
     public static SourceResult fetch(PriceSource source, String symbol) {
         long started = System.nanoTime();
         try {
-            String url = source == PriceSource.IRAN_MARKET && symbol.equals("btc")
+            String url = source == PriceSource.IRAN_MARKET && symbol.equals("btc_usd")
                     ? BITCOIN_URL
                     : source.url + (source == PriceSource.PRICETODAY ? symbol : "");
             Price quote = parse(source, symbol, request(url, source), System.currentTimeMillis());
@@ -65,35 +65,40 @@ public final class PriceApi {
     static Price parse(PriceSource source, String symbol, String body, long now) throws Exception {
         if (!source.supports(symbol)) throw new IllegalArgumentException("Unsupported currency");
         JSONObject json = new JSONObject(body);
-        long rial, time;
+        long minorUnits, time;
         if (source == PriceSource.PRICETODAY) {
             if (!json.optBoolean("success")) throw new IllegalArgumentException("API failure");
-            rial = new BigDecimal(json.get("price").toString()).longValueExact();
+            minorUnits = new BigDecimal(json.get("price").toString()).longValueExact();
             time = parseTime(json.getString("time"));
         } else if (source == PriceSource.IRAN_MARKET) {
-            JSONArray data = symbol.equals("btc")
+            JSONArray data = symbol.equals("btc_usd")
                     ? json.getJSONObject("data").getJSONObject("categories").getJSONArray("crypto")
                     : json.getJSONArray("data");
             JSONObject item = null;
-            String key = symbol.equals("usd") ? "USD_IRR_FREE" : symbol.equals("euro") ? "EUR_IRR_FREE" : symbol.equals("usdt") ? "USDT_IRR" : "BTC_IRR";
+            String key = symbol.equals("usd") ? "USD_IRR_FREE" : symbol.equals("euro") ? "EUR_IRR_FREE" : symbol.equals("usdt") ? "USDT_IRR" : "BTC_USD";
             for (int i=0; i<data.length(); i++) {
                 JSONObject candidate = data.getJSONObject(i);
                 if (key.equals(candidate.optString("symbol"))) { item = candidate; break; }
             }
-            if (item == null || !((symbol.equals("usdt") || symbol.equals("btc")) ? "crypto_iran" : "iran_free").equals(item.getString("market"))
+            if (item == null || !(symbol.equals("btc_usd") ? "crypto" : symbol.equals("usdt") ? "crypto_iran" : "iran_free").equals(item.getString("market"))
                     || new BigDecimal(item.get("unit_size").toString()).compareTo(BigDecimal.ONE) != 0) throw new IllegalArgumentException("Wrong market or unit");
             String currency = item.getString("currency");
-            if (!currency.equals("IRT") && !currency.equals("IRR")) throw new IllegalArgumentException("Unknown unit");
             BigDecimal amount = new BigDecimal(item.get("price").toString());
-            rial = (currency.equals("IRT") ? amount.multiply(BigDecimal.TEN) : amount).longValueExact();
+            if (symbol.equals("btc_usd")) {
+                if (!currency.equals("USD")) throw new IllegalArgumentException("Unknown unit");
+                minorUnits = amount.movePointRight(6).longValueExact(); // microdollars
+            } else {
+                if (!currency.equals("IRT") && !currency.equals("IRR")) throw new IllegalArgumentException("Unknown unit");
+                minorUnits = (currency.equals("IRT") ? amount.multiply(BigDecimal.TEN) : amount).longValueExact();
+            }
             time = parseTime(item.getString("timestamp"));
         } else {
             String key = symbol.equals("usd") ? "dollar" : "euro";
-            rial = new BigDecimal(json.getJSONObject("rates").get(key).toString()).multiply(BigDecimal.TEN).longValueExact();
+            minorUnits = new BigDecimal(json.getJSONObject("rates").get(key).toString()).multiply(BigDecimal.TEN).longValueExact();
             time = SourceTime.tehranJalali(json.getString("date"), json.getString("time"));
         }
         if (time > now+5*60*1000L) throw new IllegalArgumentException("Future quote");
-        return new Price(symbol, rial, time, now, source.id);
+        return new Price(symbol, minorUnits, time, now, source.id);
     }
 
     static long parseTime(String value) {

@@ -38,7 +38,7 @@ public final class PriceStore extends SQLiteOpenHelper {
     }
     private ContentValues priceValues(Price price) {
         ContentValues row = new ContentValues();
-        row.put("symbol",price.symbol); row.put("rial",price.rial);
+        row.put("symbol",price.symbol); row.put("rial",price.minorUnits);
         row.put("source_time",price.sourceTime); row.put("received_time",price.receivedTime);
         row.put("source",price.source); return row;
     }

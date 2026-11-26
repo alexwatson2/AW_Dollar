@@ -5,8 +5,8 @@ public final class WidgetSummary {
     private WidgetSummary() { }
 
     public static String trend(Price current, Price previous) {
-        if (current == null || previous == null || !current.source.equals(previous.source) || current.rial == previous.rial) return "—";
-        return current.rial > previous.rial ? "▲" : "▼";
+        if (current == null || previous == null || !current.symbol.equals(previous.symbol) || !current.source.equals(previous.source) || current.minorUnits == previous.minorUnits) return "—";
+        return current.minorUnits > previous.minorUnits ? "▲" : "▼";
     }
 
     /** Conservative minimum width across orientations, in dp; missing options use the compact layout. */
@@ -22,6 +22,14 @@ public final class WidgetSummary {
         if (toman.compareTo(million) >= 0)
             return toman.divide(million, 2, java.math.RoundingMode.HALF_UP).stripTrailingZeros().toPlainString() + "M";
         return Price.toman(rial);
+    }
+
+    /** Bitcoin is displayed in USD, rounded to whole dollars to fit the widget. */
+    public static String bitcoinPrice(long microdollars) {
+        java.text.NumberFormat format = java.text.NumberFormat.getNumberInstance(java.util.Locale.US);
+        format.setMaximumFractionDigits(0);
+        format.setRoundingMode(java.math.RoundingMode.HALF_UP);
+        return "$" + format.format(java.math.BigDecimal.valueOf(microdollars, 6));
     }
 
     /** Use the older displayed quote, not a fetch time that could hide stale/partial data. */
