@@ -14,12 +14,15 @@ import java.util.Locale;
 import java.util.TimeZone;
 
 public final class PriceApi {
+    static final String BITCOIN_URL = "https://api.github.com/repos/iran-market/iran-market.github.io/contents/data/latest.json";
     private PriceApi() { }
 
     public static SourceResult fetch(PriceSource source, String symbol) {
         long started = System.nanoTime();
         try {
-            String url = source.url + (source == PriceSource.PRICETODAY ? symbol : "");
+            String url = source == PriceSource.IRAN_MARKET && symbol.equals("btc")
+                    ? BITCOIN_URL
+                    : source.url + (source == PriceSource.PRICETODAY ? symbol : "");
             Price quote = parse(source, symbol, request(url, source), System.currentTimeMillis());
             return new SourceResult(source, symbol, quote, "", System.currentTimeMillis(),
                     (System.nanoTime()-started)/1000000);
@@ -51,7 +54,7 @@ public final class PriceApi {
                 while ((n = stream.read(buffer)) != -1) {
                     if (Thread.currentThread().isInterrupted() || System.nanoTime() > deadline)
                         throw new java.net.SocketTimeoutException("Deadline reached");
-                    if (bytes.size()+n > 1048576) throw new IllegalArgumentException("Response too large");
+                    if (bytes.size()+n > (source == PriceSource.IRAN_MARKET && url.endsWith("/latest.json") ? 3 * 1048576 : 1048576)) throw new IllegalArgumentException("Response too large");
                     bytes.write(buffer, 0, n);
                 }
             }
@@ -68,14 +71,16 @@ public final class PriceApi {
             rial = new BigDecimal(json.get("price").toString()).longValueExact();
             time = parseTime(json.getString("time"));
         } else if (source == PriceSource.IRAN_MARKET) {
-            JSONArray data = json.getJSONArray("data");
+            JSONArray data = symbol.equals("btc")
+                    ? json.getJSONObject("data").getJSONObject("categories").getJSONArray("crypto")
+                    : json.getJSONArray("data");
             JSONObject item = null;
-            String key = symbol.equals("usd") ? "USD_IRR_FREE" : symbol.equals("euro") ? "EUR_IRR_FREE" : "USDT_IRR";
+            String key = symbol.equals("usd") ? "USD_IRR_FREE" : symbol.equals("euro") ? "EUR_IRR_FREE" : symbol.equals("usdt") ? "USDT_IRR" : "BTC_IRR";
             for (int i=0; i<data.length(); i++) {
                 JSONObject candidate = data.getJSONObject(i);
                 if (key.equals(candidate.optString("symbol"))) { item = candidate; break; }
             }
-            if (item == null || !(symbol.equals("usdt") ? "crypto_iran" : "iran_free").equals(item.getString("market"))
+            if (item == null || !((symbol.equals("usdt") || symbol.equals("btc")) ? "crypto_iran" : "iran_free").equals(item.getString("market"))
                     || new BigDecimal(item.get("unit_size").toString()).compareTo(BigDecimal.ONE) != 0) throw new IllegalArgumentException("Wrong market or unit");
             String currency = item.getString("currency");
             if (!currency.equals("IRT") && !currency.equals("IRR")) throw new IllegalArgumentException("Unknown unit");

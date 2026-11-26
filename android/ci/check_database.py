@@ -56,6 +56,14 @@ class MigrationTest(unittest.TestCase):
         self.assertEqual([(110,)], db.execute("SELECT rial FROM quotes WHERE symbol='usdt'").fetchall())
         self.assertEqual(110, db.execute("SELECT rial FROM source_latest WHERE symbol='usdt'").fetchone()[0])
 
+    def test_bitcoin_is_stored_without_affecting_other_currencies(self):
+        db = sqlite3.connect(":memory:")
+        db.execute("CREATE TABLE quotes " + QUOTES)
+        sql = "INSERT OR IGNORE INTO quotes(symbol,rial,source_time,received_time,source) VALUES(?,?,?,?,?)"
+        db.executemany(sql, [("usd",100,200,300,"iranmarket"), ("btc",180385168060,200,300,"iranmarket")])
+        self.assertEqual([(180385168060,)], db.execute("SELECT rial FROM quotes WHERE symbol='btc'").fetchall())
+        self.assertEqual([(100,)], db.execute("SELECT rial FROM quotes WHERE symbol='usd'").fetchall())
+
     def test_error_status_does_not_delete_source_cache(self):
         db = sqlite3.connect(":memory:")
         create_sources(db)

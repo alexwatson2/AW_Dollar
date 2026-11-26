@@ -61,7 +61,7 @@ public final class MainActivity extends Activity {
     }
     private void readIntent(Intent intent) {
         String requested = intent.getStringExtra("symbol");
-        symbol = "euro".equals(requested) || "usdt".equals(requested) ? requested : "usd";
+        symbol = "euro".equals(requested) || "usdt".equals(requested) || "btc".equals(requested) ? requested : "usd";
     }
     @Override protected void onSaveInstanceState(Bundle state) {
         state.putString("symbol", symbol); state.putInt("page", page); super.onSaveInstanceState(state);
@@ -103,8 +103,9 @@ public final class MainActivity extends Activity {
                 List<SourceSnapshot> usdSources = store.sources("usd");
                 List<SourceSnapshot> euroSources = store.sources("euro");
                 List<SourceSnapshot> usdtSources = store.sources("usdt");
+                List<SourceSnapshot> btcSources = store.sources("btc");
                 runOnUiThread(() -> {
-                    if (!isDestroyed() && generation == request) render(latest, rows, count, usdSources, euroSources, usdtSources);
+                    if (!isDestroyed() && generation == request) render(latest, rows, count, usdSources, euroSources, usdtSources, btcSources);
                 });
             } catch (Exception e) {
                 runOnUiThread(() -> {
@@ -115,7 +116,7 @@ public final class MainActivity extends Activity {
         });
     }
 
-    private void render(List<Price> latest, List<Price> rows, int count, List<SourceSnapshot> usdSources, List<SourceSnapshot> euroSources, List<SourceSnapshot> usdtSources) {
+    private void render(List<Price> latest, List<Price> rows, int count, List<SourceSnapshot> usdSources, List<SourceSnapshot> euroSources, List<SourceSnapshot> usdtSources, List<SourceSnapshot> btcSources) {
         int previousY = screen == null || resetScroll ? 0 : screen.getScrollY();
         resetScroll = false;
         ScrollView scroll = new ScrollView(this);
@@ -139,17 +140,20 @@ public final class MainActivity extends Activity {
         text(body, "dollar", 13, 0xff2c786d).setTypeface(null, Typeface.BOLD);
         text(body, "نبض ارز، روی صفحهٔ تو", 26, 0xff183d38);
         text(body, "بازار آزاد ایران · قیمت‌ها به تومان", 13, 0xff758780);
+        text(body, "در ویجت، M یعنی میلیون و B یعنی میلیارد تومان؛ عدد کوتاه‌شده تقریبی است.", 12, 0xff758780);
         LinearLayout tabs = horizontal(body);
         button(tabs, symbol.equals("usd") ? "● دلار 🇺🇸" : "دلار 🇺🇸", () -> select("usd"));
         button(tabs, symbol.equals("euro") ? "● یورو 🇪🇺" : "یورو 🇪🇺", () -> select("euro"));
 
-        button(tabs, symbol.equals("usdt") ? "● تتر" : "تتر", () -> select("usdt"));
+        LinearLayout cryptoTabs = horizontal(body);
+        button(cryptoTabs, symbol.equals("usdt") ? "● تتر" : "تتر", () -> select("usdt"));
+        button(cryptoTabs, symbol.equals("btc") ? "● بیت‌کوین" : "بیت‌کوین", () -> select("btc"));
 
         Price current = latest.isEmpty() ? null : latest.get(0);
         Price previous = latest.size() > 1 ? latest.get(1) : null;
         LinearLayout hero = card(body);
-        text(hero, symbol.equals("usd") ? "🇺🇸   US Dollar" : symbol.equals("euro") ? "🇪🇺   Euro" : "₮   Tether (USDT)", 18, 0xff56716e).setTextDirection(View.TEXT_DIRECTION_LTR);
-        TextView value = text(hero, current == null ? "—" : Price.toman(current.rial), 44, 0xff183d38);
+        text(hero, symbol.equals("usd") ? "🇺🇸   US Dollar" : symbol.equals("euro") ? "🇪🇺   Euro" : symbol.equals("usdt") ? "₮   Tether (USDT)" : "₿   Bitcoin (BTC)", 18, 0xff56716e).setTextDirection(View.TEXT_DIRECTION_LTR);
+        TextView value = text(hero, current == null ? "—" : Price.toman(current.rial), symbol.equals("btc") ? 25 : 44, 0xff183d38);
         value.setTextDirection(View.TEXT_DIRECTION_LTR);
         value.setGravity(Gravity.CENTER);
         text(hero, "تومان", 13, 0xff758780).setGravity(Gravity.CENTER);
@@ -171,7 +175,10 @@ public final class MainActivity extends Activity {
             sourceQuote(sourceCard, "یورو", euro);
             if (usd.source.supports("usdt")) sourceQuote(sourceCard, "تتر", usdtSources.get(i));
             else text(sourceCard, "تتر: این منبع پشتیبانی نمی‌کند", 12, 0xff758780);
+            if (usd.source.supports("btc")) sourceQuote(sourceCard, "بیت‌کوین", btcSources.get(i));
+            else text(sourceCard, "بیت‌کوین: این منبع پشتیبانی نمی‌کند", 12, 0xff758780);
             text(sourceCard, usd.source.url, 10, 0xff758780).setTextDirection(View.TEXT_DIRECTION_LTR);
+            if (usd.source == PriceSource.IRAN_MARKET) text(sourceCard, PriceApi.BITCOIN_URL, 10, 0xff758780).setTextDirection(View.TEXT_DIRECTION_LTR);
         }
         text(body, "روند آخرین ۶۰ ثبت", 18, 0xff183d38);
         text(body, "نمودار نرخ‌های منتخب است؛ بین دو منبع متفاوت خط روند رسم نمی‌شود.", 12, 0xff758780);

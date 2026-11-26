@@ -52,6 +52,28 @@ public class ProviderParserTest {
         assertFalse(PriceSource.PRICETODAY.supports("usdt"));
         assertFalse(PriceSource.NERKHSANJ.supports("usdt"));
     }
+    @Test public void bitcoinUsesRialMarketAndItemTimestamp() throws Exception {
+        Price quote = PriceApi.parse(PriceSource.IRAN_MARKET,"btc",fixture("iran-market-bitcoin.json"),now());
+        assertEquals("btc", quote.symbol);
+        assertEquals(180385168060L, quote.rial);
+        assertEquals(PriceApi.parseTime("2026-11-08T16:29:47.300Z"), quote.sourceTime);
+        assertEquals("iranmarket", quote.source);
+    }
+    @Test public void bitcoinAlsoAcceptsExplicitTomanUnit() throws Exception {
+        String body = fixture("iran-market-bitcoin.json").replace("\"currency\":\"IRR\"", "\"currency\":\"IRT\"");
+        assertEquals(1803851680600L, PriceApi.parse(PriceSource.IRAN_MARKET,"btc",body,now()).rial);
+    }
+    @Test(expected=IllegalArgumentException.class) public void rejectsBitcoinFromWrongMarket() throws Exception {
+        PriceApi.parse(PriceSource.IRAN_MARKET,"btc",fixture("iran-market-bitcoin.json").replace("crypto_iran", "crypto"),now());
+    }
+    @Test(expected=IllegalArgumentException.class) public void rejectsBitcoinWithWrongUnit() throws Exception {
+        PriceApi.parse(PriceSource.IRAN_MARKET,"btc",fixture("iran-market-bitcoin.json").replace("\"currency\":\"IRR\"", "\"currency\":\"USD\""),now());
+    }
+    @Test public void bitcoinSupportIsExplicit() {
+        assertTrue(PriceSource.IRAN_MARKET.supports("btc"));
+        assertFalse(PriceSource.PRICETODAY.supports("btc"));
+        assertFalse(PriceSource.NERKHSANJ.supports("btc"));
+    }
     @Test public void nerkhsanjNormalizesTomanAndJalaliTehranTime() throws Exception {
         Price usd = PriceApi.parse(PriceSource.NERKHSANJ,"usd",fixture("nerkhsanj.json"),now());
         Price euro = PriceApi.parse(PriceSource.NERKHSANJ,"euro",fixture("nerkhsanj.json"),now());
