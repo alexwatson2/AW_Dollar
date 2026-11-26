@@ -1,7 +1,7 @@
 <resources>
     <string name="app_name">dollar</string>
     <string name="dollar_widget">dollar</string>
-    <string name="widget_description">دلار، یورو، تتر و بیت‌کوین در یک ویجت کوچک؛ قیمت به تومان، نشان روند و تاریخ آخرین نرخ.</string>
+    <string name="widget_description">دلار، یورو، تتر و بیت‌کوین در یک ویجت کوچک؛ دلار، یورو و تتر به تومان و بیت‌کوین به دلار؛ نشان روند و تاریخ آخرین نرخ.</string>
     <string name="dollar_history">باز کردن تاریخچهٔ دلار</string>
     <string name="euro_history">باز کردن تاریخچهٔ یورو</string>
     <string name="usdt_history">باز کردن تاریخچهٔ تتر</string>

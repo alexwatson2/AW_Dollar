@@ -27,6 +27,7 @@ public class WidgetSummaryTest {
         Price other = new Price("usd",2649500,20,21,"iranmarket");
         assertEquals("—",WidgetSummary.trend(other,original));
         assertTrue(Price.change(other,original).contains("تغییر منبع"));
+        assertEquals("—", WidgetSummary.trend(new Price("btc_usd",100,20,21,"iranmarket"), new Price("btc",50,10,11,"iranmarket")));
     }
 
     @Test public void combinedDateUsesOlderQuoteNotNewerFetch() {
@@ -59,8 +60,13 @@ public class WidgetSummaryTest {
         assertEquals("18.04B", WidgetSummary.compactPrice(180385168060L));
     }
 
+    @Test public void bitcoinWidgetUsesExplicitRoundedDollarValue() {
+        assertEquals("$60,614", WidgetSummary.bitcoinPrice(60613640000L));
+        assertEquals("$60,613", WidgetSummary.bitcoinPrice(60613400000L));
+    }
+
     @Test public void bitcoinParticipatesInOldestDisplayedDate() {
-        Price btc = quote("btc", 180385168060L, 5);
+        Price btc = quote("btc_usd", 60613640000L, 5);
         assertEquals(5, WidgetSummary.updatedAt(quote("usd",10,30), quote("euro",10,20), quote("usdt",10,10), btc));
         assertEquals(5, WidgetSummary.updatedAt(null, null, null, btc));
     }
