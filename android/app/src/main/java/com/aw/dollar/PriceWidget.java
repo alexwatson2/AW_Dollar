@@ -11,7 +11,7 @@ import java.text.SimpleDateFormat;
 import java.util.List;
 import java.util.Locale;
 
-/** One compact widget, containing all three currencies. No history or verbose status on its face. */
+/** One compact widget, containing all four currencies. No history or verbose status on its face. */
 public abstract class PriceWidget extends AppWidgetProvider {
     @Override public void onUpdate(Context context, AppWidgetManager manager, int[] ids) {
         Refresh.schedule(context);
@@ -32,22 +32,25 @@ public abstract class PriceWidget extends AppWidgetProvider {
         List<Price> usd;
         List<Price> euro;
         List<Price> usdt;
+        List<Price> btc;
         try (PriceStore store = new PriceStore(context)) {
             usd = store.history("usd", 2, 0);
             euro = store.history("euro", 2, 0);
             usdt = store.history("usdt", 2, 0);
+            btc = store.history("btc", 2, 0);
         }
-        long updatedAt = WidgetSummary.updatedAt(latest(usd), latest(euro), latest(usdt));
+        long updatedAt = WidgetSummary.updatedAt(latest(usd), latest(euro), latest(usdt), latest(btc));
         for (int id : ids) {
             RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.price_widget);
             bindRow(context, views, id, "usd", usd, R.id.usd_row, R.id.usd_price, R.id.usd_trend);
             bindRow(context, views, id, "euro", euro, R.id.eur_row, R.id.eur_price, R.id.eur_trend);
             bindRow(context, views, id, "usdt", usdt, R.id.usdt_row, R.id.usdt_price, R.id.usdt_trend);
+            bindRow(context, views, id, "btc", btc, R.id.btc_row, R.id.btc_price, R.id.btc_trend);
             String stamp = updatedAt == 0 ? "—" :
                     new SimpleDateFormat("yyyy/MM/dd HH:mm", Locale.US).format(updatedAt);
             views.setTextViewText(R.id.updated, stamp);
             // Color alone is not the only stale indicator: TalkBack and the app expose details.
-            boolean stale = Refresh.stale(context, latest(usd)) || Refresh.stale(context, latest(euro)) || Refresh.stale(context, latest(usdt));
+            boolean stale = Refresh.stale(context, latest(usd)) || Refresh.stale(context, latest(euro)) || Refresh.stale(context, latest(usdt)) || Refresh.stale(context, latest(btc));
             views.setTextColor(R.id.updated, stale ? 0xffdbc08d : 0xffb7bdc4);
             views.setContentDescription(R.id.updated, updatedAt == 0 ? "هنوز نرخی دریافت نشده" :
                     "زمان قدیمی‌ترین نرخ نمایش‌داده‌شده: " + stamp + (stale ? "؛ نرخ ذخیره‌شده یا قدیمی" : ""));
@@ -62,15 +65,15 @@ public abstract class PriceWidget extends AppWidgetProvider {
                                 int rowId, int priceId, int trendId) {
         Price current = latest(prices);
         Price previous = prices.size() < 2 ? null : prices.get(1);
-        String value = current == null ? "—" : Price.toman(current.rial);
+        String value = current == null ? "—" : WidgetSummary.compactPrice(current.rial);
         String trend = WidgetSummary.trend(current, previous);
         views.setTextViewText(priceId, value);
         views.setTextViewText(trendId, trend);
         views.setTextColor(trendId, trend.equals("—") ? 0xffb7bdc4 :
                 current.rial > previous.rial ? 0xff72d5ad : 0xffff8e99);
-        String name = symbol.equals("usd") ? "دلار" : symbol.equals("euro") ? "یورو" : "تتر";
+        String name = symbol.equals("usd") ? "دلار" : symbol.equals("euro") ? "یورو" : symbol.equals("usdt") ? "تتر" : "بیت‌کوین";
         views.setContentDescription(rowId, name + ": " + (current == null ? "هنوز دریافت نشده" :
-                value + " تومان؛ " + Price.change(current, previous)) + "؛ باز کردن تاریخچه");
+                Price.toman(current.rial) + " تومان؛ " + Price.change(current, previous)) + "؛ باز کردن تاریخچه");
         views.setOnClickPendingIntent(rowId, openCurrency(context, id, symbol));
     }
 

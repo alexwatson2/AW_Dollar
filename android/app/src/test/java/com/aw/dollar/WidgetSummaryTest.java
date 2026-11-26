@@ -45,6 +45,18 @@ public class WidgetSummaryTest {
         assertEquals(20, WidgetSummary.updatedAt(usd, euro, null));
     }
 
+    @Test public void compactPriceKeepsSmallPricesAndAbbreviatesLargePrices() {
+        assertEquals("292,890", WidgetSummary.compactPrice(2928900));
+        assertEquals("1.23M", WidgetSummary.compactPrice(12345670));
+        assertEquals("18.04B", WidgetSummary.compactPrice(180385168060L));
+    }
+
+    @Test public void bitcoinParticipatesInOldestDisplayedDate() {
+        Price btc = quote("btc", 180385168060L, 5);
+        assertEquals(5, WidgetSummary.updatedAt(quote("usd",10,30), quote("euro",10,20), quote("usdt",10,10), btc));
+        assertEquals(5, WidgetSummary.updatedAt(null, null, null, btc));
+    }
+
     @Test public void dateHandlesEmptyAndPartiallyLoadedWidget() {
         Price usd = quote("usd", 2649000, 10);
         assertEquals(0, WidgetSummary.updatedAt(null, null));

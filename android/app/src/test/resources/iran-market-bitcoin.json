@@ -1,0 +1,11 @@
+{
+  "data": {
+    "generated_at": "2026-11-08T17:00:00Z",
+    "categories": {
+      "crypto": [
+        {"symbol":"BTC_USD", "market":"crypto", "currency":"USD", "unit_size":1, "price":60000, "timestamp":"2026-11-08T16:29:00Z"},
+        {"symbol":"BTC_IRR", "market":"crypto_iran", "currency":"IRR", "unit_size":1, "price":180385168060, "timestamp":"2026-11-08T16:29:47.300Z"}
+      ]
+    }
+  }
+}
