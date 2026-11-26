@@ -8,6 +8,10 @@ public enum PriceSource {
 
     public final String id, title, url;
     PriceSource(String id, String title, String url) { this.id = id; this.title = title; this.url = url; }
+    /** Only Iran Market exposes a verified USDT/IRT quote in its current feed. */
+    public boolean supports(String symbol) {
+        return symbol.equals("usd") || symbol.equals("euro") || (symbol.equals("usdt") && this == IRAN_MARKET);
+    }
     public static PriceSource byId(String id) {
         for (PriceSource source : values()) if (source.id.equals(id)) return source;
         throw new IllegalArgumentException("Unknown source");

@@ -34,6 +34,24 @@ public class ProviderParserTest {
         assertEquals("iranmarket",euro.source);
         assertTrue(euro.rial > 0);
     }
+    @Test public void tetherUsesSeparateCryptoMarketAndActualItemTimestamp() throws Exception {
+        Price quote = PriceApi.parse(PriceSource.IRAN_MARKET,"usdt",fixture("iran-market.json"),now());
+        assertEquals("usdt", quote.symbol);
+        assertEquals(2671960, quote.rial);
+        assertEquals(PriceApi.parseTime("2026-11-08T16:29:47.300Z"), quote.sourceTime);
+        assertEquals("iranmarket", quote.source);
+    }
+    @Test(expected=IllegalArgumentException.class) public void rejectsTetherFromWrongMarket() throws Exception {
+        PriceApi.parse(PriceSource.IRAN_MARKET,"usdt",fixture("iran-market.json").replace("crypto_iran", "iran_free"),now());
+    }
+    @Test(expected=IllegalArgumentException.class) public void rejectsUnsupportedTetherProvider() throws Exception {
+        PriceApi.parse(PriceSource.NERKHSANJ,"usdt",fixture("nerkhsanj.json"),now());
+    }
+    @Test public void tetherSupportIsExplicit() {
+        assertTrue(PriceSource.IRAN_MARKET.supports("usdt"));
+        assertFalse(PriceSource.PRICETODAY.supports("usdt"));
+        assertFalse(PriceSource.NERKHSANJ.supports("usdt"));
+    }
     @Test public void nerkhsanjNormalizesTomanAndJalaliTehranTime() throws Exception {
         Price usd = PriceApi.parse(PriceSource.NERKHSANJ,"usd",fixture("nerkhsanj.json"),now());
         Price euro = PriceApi.parse(PriceSource.NERKHSANJ,"euro",fixture("nerkhsanj.json"),now());

@@ -34,12 +34,12 @@ public final class Refresh {
         long started = System.currentTimeMillis();
         context.getSharedPreferences("refresh",0).edit().putLong("sources_checked",started).apply();
         try (PriceStore store = new PriceStore(context)) {
-            for (PriceSource source : PriceSource.values()) for (String symbol : new String[]{"usd","euro"})
-                store.status(source,symbol,"pending","",started,0);
+            for (PriceSource source : PriceSource.values()) for (String symbol : new String[]{"usd","euro","usdt"})
+                if (source.supports(symbol)) store.status(source,symbol,"pending","",started,0);
             changed();
             List<Callable<SourceResult>> tasks = new ArrayList<>();
-            for (PriceSource source : PriceSource.values()) for (String symbol : new String[]{"usd","euro"})
-                tasks.add(() -> PriceApi.fetch(source,symbol));
+            for (PriceSource source : PriceSource.values()) for (String symbol : new String[]{"usd","euro","usdt"})
+                if (source.supports(symbol)) tasks.add(() -> PriceApi.fetch(source,symbol));
             try {
                 won.addAll(SourceRace.run(tasks,18000,new SourceRace.Listener() {
                     @Override public boolean eligible(Price price) {
@@ -63,17 +63,17 @@ public final class Refresh {
                 }));
             } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
             finally {
-                for (PriceSource source : PriceSource.values()) for (String symbol : new String[]{"usd","euro"}) {
-                    if (!completed.contains(source.id+":"+symbol))
+                for (PriceSource source : PriceSource.values()) for (String symbol : new String[]{"usd","euro","usdt"}) {
+                    if (source.supports(symbol) && !completed.contains(source.id+":"+symbol))
                         store.status(source,symbol,"error",Thread.currentThread().isInterrupted() ? "بررسی لغو شد" : "مهلت بررسی تمام شد",System.currentTimeMillis(),System.currentTimeMillis()-started);
                 }
-                for (String symbol : new String[]{"usd","euro"}) {
+                for (String symbol : new String[]{"usd","euro","usdt"}) {
                     if (!won.contains(symbol)) context.getSharedPreferences("refresh",0).edit().putBoolean(symbol+"_failed",true).apply();
                 }
                 PriceWidget.updateAll(context); changed();
             }
         }
-        return won.size() == 2;
+        return won.size() == 3;
     }
     private static void changed() {
         new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> {

@@ -45,6 +45,26 @@
             android:textSize="12sp" android:includeFontPadding="false" />
     </LinearLayout>
 
+    <LinearLayout android:id="@+id/usdt_row"
+        android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"
+        android:gravity="center_vertical" android:contentDescription="@string/usdt_history">
+        <ImageView android:layout_width="18dp" android:layout_height="18dp"
+            android:src="@drawable/usdt_icon" android:scaleType="fitCenter"
+            android:importantForAccessibility="no" android:contentDescription="@null" />
+        <TextView android:id="@+id/usdt_price"
+            android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1"
+            android:layout_marginStart="5dp" android:gravity="start|center_vertical"
+            android:text="—" android:textSize="18sp" android:textStyle="bold"
+            android:fontFamily="sans-serif" android:textColor="#FFFFFF"
+            android:includeFontPadding="false" android:maxLines="1" android:textDirection="ltr"
+            android:autoSizeTextType="uniform" android:autoSizeMinTextSize="12sp"
+            android:autoSizeMaxTextSize="18sp" android:autoSizeStepGranularity="1sp" />
+        <TextView android:id="@+id/usdt_trend"
+            android:layout_width="16dp" android:layout_height="match_parent"
+            android:gravity="center" android:text="—" android:maxLines="1" android:textColor="#B7BDC4"
+            android:textSize="12sp" android:includeFontPadding="false" />
+    </LinearLayout>
+
     <TextView android:id="@+id/updated"
         android:layout_width="match_parent" android:layout_height="wrap_content"
         android:gravity="center" android:layout_marginTop="2dp"

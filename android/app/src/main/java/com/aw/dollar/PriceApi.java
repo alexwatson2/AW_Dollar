@@ -60,7 +60,7 @@ public final class PriceApi {
     }
 
     static Price parse(PriceSource source, String symbol, String body, long now) throws Exception {
-        if (!symbol.equals("usd") && !symbol.equals("euro")) throw new IllegalArgumentException("Unknown currency");
+        if (!source.supports(symbol)) throw new IllegalArgumentException("Unsupported currency");
         JSONObject json = new JSONObject(body);
         long rial, time;
         if (source == PriceSource.PRICETODAY) {
@@ -70,12 +70,12 @@ public final class PriceApi {
         } else if (source == PriceSource.IRAN_MARKET) {
             JSONArray data = json.getJSONArray("data");
             JSONObject item = null;
-            String key = symbol.equals("usd") ? "USD_IRR_FREE" : "EUR_IRR_FREE";
+            String key = symbol.equals("usd") ? "USD_IRR_FREE" : symbol.equals("euro") ? "EUR_IRR_FREE" : "USDT_IRR";
             for (int i=0; i<data.length(); i++) {
                 JSONObject candidate = data.getJSONObject(i);
                 if (key.equals(candidate.optString("symbol"))) { item = candidate; break; }
             }
-            if (item == null || !"iran_free".equals(item.getString("market"))
+            if (item == null || !(symbol.equals("usdt") ? "crypto_iran" : "iran_free").equals(item.getString("market"))
                     || new BigDecimal(item.get("unit_size").toString()).compareTo(BigDecimal.ONE) != 0) throw new IllegalArgumentException("Wrong market or unit");
             String currency = item.getString("currency");
             if (!currency.equals("IRT") && !currency.equals("IRR")) throw new IllegalArgumentException("Unknown unit");

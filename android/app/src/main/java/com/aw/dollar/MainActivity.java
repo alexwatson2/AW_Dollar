@@ -59,7 +59,10 @@ public final class MainActivity extends Activity {
         resetScroll = true;
         load();
     }
-    private void readIntent(Intent intent) { symbol = "euro".equals(intent.getStringExtra("symbol")) ? "euro" : "usd"; }
+    private void readIntent(Intent intent) {
+        String requested = intent.getStringExtra("symbol");
+        symbol = "euro".equals(requested) || "usdt".equals(requested) ? requested : "usd";
+    }
     @Override protected void onSaveInstanceState(Bundle state) {
         state.putString("symbol", symbol); state.putInt("page", page); super.onSaveInstanceState(state);
     }
@@ -99,8 +102,9 @@ public final class MainActivity extends Activity {
                 int count = store.count(selected);
                 List<SourceSnapshot> usdSources = store.sources("usd");
                 List<SourceSnapshot> euroSources = store.sources("euro");
+                List<SourceSnapshot> usdtSources = store.sources("usdt");
                 runOnUiThread(() -> {
-                    if (!isDestroyed() && generation == request) render(latest, rows, count, usdSources, euroSources);
+                    if (!isDestroyed() && generation == request) render(latest, rows, count, usdSources, euroSources, usdtSources);
                 });
             } catch (Exception e) {
                 runOnUiThread(() -> {
@@ -111,7 +115,7 @@ public final class MainActivity extends Activity {
         });
     }
 
-    private void render(List<Price> latest, List<Price> rows, int count, List<SourceSnapshot> usdSources, List<SourceSnapshot> euroSources) {
+    private void render(List<Price> latest, List<Price> rows, int count, List<SourceSnapshot> usdSources, List<SourceSnapshot> euroSources, List<SourceSnapshot> usdtSources) {
         int previousY = screen == null || resetScroll ? 0 : screen.getScrollY();
         resetScroll = false;
         ScrollView scroll = new ScrollView(this);
@@ -139,10 +143,12 @@ public final class MainActivity extends Activity {
         button(tabs, symbol.equals("usd") ? "● دلار 🇺🇸" : "دلار 🇺🇸", () -> select("usd"));
         button(tabs, symbol.equals("euro") ? "● یورو 🇪🇺" : "یورو 🇪🇺", () -> select("euro"));
 
+        button(tabs, symbol.equals("usdt") ? "● تتر" : "تتر", () -> select("usdt"));
+
         Price current = latest.isEmpty() ? null : latest.get(0);
         Price previous = latest.size() > 1 ? latest.get(1) : null;
         LinearLayout hero = card(body);
-        text(hero, symbol.equals("usd") ? "🇺🇸   US Dollar" : "🇪🇺   Euro", 18, 0xff56716e).setTextDirection(View.TEXT_DIRECTION_LTR);
+        text(hero, symbol.equals("usd") ? "🇺🇸   US Dollar" : symbol.equals("euro") ? "🇪🇺   Euro" : "₮   Tether (USDT)", 18, 0xff56716e).setTextDirection(View.TEXT_DIRECTION_LTR);
         TextView value = text(hero, current == null ? "—" : Price.toman(current.rial), 44, 0xff183d38);
         value.setTextDirection(View.TEXT_DIRECTION_LTR);
         value.setGravity(Gravity.CENTER);
@@ -163,6 +169,8 @@ public final class MainActivity extends Activity {
             text(sourceCard, usd.source.title + (current != null && current.source.equals(usd.source.id) ? " · منبع منتخب این ارز" : ""), 18, 0xff183d38);
             sourceQuote(sourceCard, "دلار", usd);
             sourceQuote(sourceCard, "یورو", euro);
+            if (usd.source.supports("usdt")) sourceQuote(sourceCard, "تتر", usdtSources.get(i));
+            else text(sourceCard, "تتر: این منبع پشتیبانی نمی‌کند", 12, 0xff758780);
             text(sourceCard, usd.source.url, 10, 0xff758780).setTextDirection(View.TEXT_DIRECTION_LTR);
         }
         text(body, "روند آخرین ۶۰ ثبت", 18, 0xff183d38);
@@ -259,7 +267,7 @@ public final class MainActivity extends Activity {
             } catch (Exception ignored) { }
             final boolean done = success;
             runOnUiThread(() -> {
-                if (!isDestroyed()) Toast.makeText(this, done ? "تاریخچهٔ هر دو ارز از همهٔ منابع ذخیره شد" : "ذخیرهٔ خروجی ناموفق بود؛ دوباره تلاش کنید", Toast.LENGTH_LONG).show();
+                if (!isDestroyed()) Toast.makeText(this, done ? "تاریخچهٔ همهٔ ارزها از همهٔ منابع ذخیره شد" : "ذخیرهٔ خروجی ناموفق بود؛ دوباره تلاش کنید", Toast.LENGTH_LONG).show();
             });
         });
     }

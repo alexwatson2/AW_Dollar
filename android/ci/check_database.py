@@ -43,6 +43,19 @@ class MigrationTest(unittest.TestCase):
             db.execute(sql,row)
         self.assertEqual(2,db.execute("SELECT COUNT(*) FROM quotes").fetchone()[0])
 
+    def test_tether_history_is_isolated_and_survives_failure(self):
+        db = sqlite3.connect(":memory:")
+        db.execute("CREATE TABLE quotes " + QUOTES)
+        create_sources(db)
+        sql = "INSERT OR IGNORE INTO quotes(symbol,rial,source_time,received_time,source) VALUES(?,?,?,?,?)"
+        db.executemany(sql, [("usd",100,200,300,"iranmarket"), ("usdt",110,200,300,"iranmarket"),
+                             ("usdt",110,200,400,"iranmarket")])
+        db.execute("INSERT INTO source_latest VALUES('iranmarket','usdt',110,200,300)")
+        db.execute("INSERT INTO source_status VALUES('iranmarket','usdt','error','timeout',400,6000)")
+        self.assertEqual([(100,)], db.execute("SELECT rial FROM quotes WHERE symbol='usd'").fetchall())
+        self.assertEqual([(110,)], db.execute("SELECT rial FROM quotes WHERE symbol='usdt'").fetchall())
+        self.assertEqual(110, db.execute("SELECT rial FROM source_latest WHERE symbol='usdt'").fetchone()[0])
+
     def test_error_status_does_not_delete_source_cache(self):
         db = sqlite3.connect(":memory:")
         create_sources(db)

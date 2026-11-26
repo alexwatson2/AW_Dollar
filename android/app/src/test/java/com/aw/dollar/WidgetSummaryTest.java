@@ -36,6 +36,15 @@ public class WidgetSummaryTest {
         assertEquals(10, WidgetSummary.updatedAt(euro, usd));
     }
 
+    @Test public void tetherParticipatesInOldestDisplayedDate() {
+        Price usd = quote("usd", 10, 30);
+        Price euro = quote("euro", 10, 20);
+        Price usdt = quote("usdt", 10, 10);
+        assertEquals(10, WidgetSummary.updatedAt(usd, euro, usdt));
+        assertEquals(10, WidgetSummary.updatedAt(null, null, usdt));
+        assertEquals(20, WidgetSummary.updatedAt(usd, euro, null));
+    }
+
     @Test public void dateHandlesEmptyAndPartiallyLoadedWidget() {
         Price usd = quote("usd", 2649000, 10);
         assertEquals(0, WidgetSummary.updatedAt(null, null));

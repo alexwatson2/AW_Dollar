@@ -15,7 +15,7 @@ public final class Price {
 
     public Price(String symbol, long rial, long sourceTime, long receivedTime, String source) {
         PriceSource.byId(source);
-        if (!symbol.equals("usd") && !symbol.equals("euro")) throw new IllegalArgumentException("Unknown currency");
+        if (!symbol.equals("usd") && !symbol.equals("euro") && !symbol.equals("usdt")) throw new IllegalArgumentException("Unknown currency");
         if (rial <= 0 || sourceTime <= 0 || receivedTime <= 0) throw new IllegalArgumentException("Invalid quote");
         this.source = source;
         this.symbol = symbol;
