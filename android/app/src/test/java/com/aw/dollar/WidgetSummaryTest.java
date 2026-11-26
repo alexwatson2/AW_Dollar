@@ -45,6 +45,14 @@ public class WidgetSummaryTest {
         assertEquals(20, WidgetSummary.updatedAt(usd, euro, null));
     }
 
+    @Test public void widgetChoosesReadableLayoutOnlyWhenWidthIsKnownAndFits() {
+        assertFalse(WidgetSummary.useWideLayout(0));
+        assertFalse(WidgetSummary.useWideLayout(140));
+        assertFalse(WidgetSummary.useWideLayout(239));
+        assertTrue(WidgetSummary.useWideLayout(240));
+        assertTrue(WidgetSummary.useWideLayout(330));
+    }
+
     @Test public void compactPriceKeepsSmallPricesAndAbbreviatesLargePrices() {
         assertEquals("292,890", WidgetSummary.compactPrice(2928900));
         assertEquals("1.23M", WidgetSummary.compactPrice(12345670));

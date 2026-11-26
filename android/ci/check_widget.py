@@ -43,6 +43,34 @@ class CompactWidgetTest(unittest.TestCase):
             self.assertEqual("horizontal", row.get(A + "orientation"))
             self.assertTrue(all(cell.get(A + "layout_weight") == "1" for cell in row))
 
+    def test_wide_layout_preserves_grid_and_uses_readable_larger_elements(self):
+        compact = ET.parse(MAIN / "res/layout/price_widget.xml").getroot()
+        wide = ET.parse(MAIN / "res/layout/price_widget_wide.xml").getroot()
+        compact_nodes = {n.get(A + "id"): n for n in compact.iter() if n.get(A + "id")}
+        wide_nodes = {n.get(A + "id"): n for n in wide.iter() if n.get(A + "id")}
+        self.assertEqual(set(compact_nodes), set(wide_nodes))
+        rows = [node for node in wide if node.tag == "LinearLayout"]
+        self.assertEqual([["@+id/usd_row", "@+id/eur_row"], ["@+id/usdt_row", "@+id/btc_row"]],
+                         [[cell.get(A + "id") for cell in row] for row in rows])
+        for prefix in ("usd", "eur", "usdt", "btc"):
+            cell = wide_nodes["@+id/" + prefix + "_row"]
+            self.assertEqual("18dp", cell.find("ImageView").get(A + "layout_width"))
+            price = wide_nodes["@+id/" + prefix + "_price"]
+            self.assertEqual("16sp", price.get(A + "textSize"))
+            self.assertEqual("wrap_content", price.get(A + "layout_width"))
+            self.assertEqual("76dp", price.get(A + "maxWidth"))
+            # Trend directly follows the price rather than being pushed to the cell edge.
+            self.assertEqual("@+id/" + prefix + "_trend", list(cell)[2].get(A + "id"))
+        self.assertEqual("10sp", wide_nodes["@+id/updated"].get(A + "textSize"))
+
+    def test_size_change_rebinds_each_widget_using_its_own_options(self):
+        source = (MAIN / "java/com/aw/dollar/PriceWidget.java").read_text()
+        self.assertIn("onAppWidgetOptionsChanged", source)
+        self.assertIn("new int[]{appWidgetId}, newOptions", source)
+        self.assertIn("manager.getAppWidgetOptions(id)", source)
+        self.assertIn("OPTION_APPWIDGET_MIN_WIDTH", source)
+        self.assertIn("WidgetSummary.useWideLayout(width)", source)
+
     def test_each_currency_has_its_own_row_and_flag(self):
         layout = ET.parse(MAIN / "res/layout/price_widget.xml")
         nodes = {node.get(A + "id"): node for node in layout.iter()}

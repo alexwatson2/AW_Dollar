@@ -6,6 +6,7 @@ import android.appwidget.AppWidgetProvider;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.os.Bundle;
 import android.widget.RemoteViews;
 import java.text.SimpleDateFormat;
 import java.util.List;
@@ -22,12 +23,22 @@ public abstract class PriceWidget extends AppWidgetProvider {
                 .setRequiredNetworkType(android.app.job.JobInfo.NETWORK_TYPE_ANY).setMinimumLatency(1000).build());
     }
 
+    @Override public void onAppWidgetOptionsChanged(Context context, AppWidgetManager manager,
+                                                     int appWidgetId, Bundle newOptions) {
+        super.onAppWidgetOptionsChanged(context, manager, appWidgetId, newOptions);
+        update(context, manager, new int[]{appWidgetId}, newOptions);
+    }
+
     public static void updateAll(Context context) {
         AppWidgetManager manager = AppWidgetManager.getInstance(context);
         update(context, manager, manager.getAppWidgetIds(new ComponentName(context, DollarWidget.class)));
     }
 
     private static void update(Context context, AppWidgetManager manager, int[] ids) {
+        update(context, manager, ids, null);
+    }
+
+    private static void update(Context context, AppWidgetManager manager, int[] ids, Bundle changedOptions) {
         if (ids.length == 0) return;
         List<Price> usd;
         List<Price> euro;
@@ -41,7 +52,10 @@ public abstract class PriceWidget extends AppWidgetProvider {
         }
         long updatedAt = WidgetSummary.updatedAt(latest(usd), latest(euro), latest(usdt), latest(btc));
         for (int id : ids) {
-            RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.price_widget);
+            Bundle options = changedOptions != null ? changedOptions : manager.getAppWidgetOptions(id);
+            int width = options == null ? 0 : options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 0);
+            int layout = WidgetSummary.useWideLayout(width) ? R.layout.price_widget_wide : R.layout.price_widget;
+            RemoteViews views = new RemoteViews(context.getPackageName(), layout);
             bindRow(context, views, id, "usd", usd, R.id.usd_row, R.id.usd_price, R.id.usd_trend);
             bindRow(context, views, id, "euro", euro, R.id.eur_row, R.id.eur_price, R.id.eur_trend);
             bindRow(context, views, id, "usdt", usdt, R.id.usdt_row, R.id.usdt_price, R.id.usdt_trend);

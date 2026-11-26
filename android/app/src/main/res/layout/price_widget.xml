@@ -10,17 +10,17 @@
         <LinearLayout android:id="@+id/usd_row"
             android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1"
             android:gravity="center_vertical" android:contentDescription="@string/dollar_history">
-            <ImageView android:layout_width="13dp" android:layout_height="13dp"
+            <ImageView android:layout_width="14dp" android:layout_height="14dp"
                 android:src="@drawable/usd_flag" android:scaleType="fitCenter"
                 android:importantForAccessibility="no" android:contentDescription="@null" />
             <TextView android:id="@+id/usd_price"
                 android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1"
                 android:layout_marginStart="2dp" android:gravity="start|center_vertical"
-                android:text="—" android:textSize="10sp" android:textStyle="bold"
+                android:text="—" android:textSize="11sp" android:textStyle="bold"
                 android:fontFamily="sans-serif" android:textColor="#FFFFFF"
                 android:includeFontPadding="false" android:maxLines="1" android:textDirection="ltr"
-                android:autoSizeTextType="uniform" android:autoSizeMinTextSize="8sp"
-                android:autoSizeMaxTextSize="10sp" android:autoSizeStepGranularity="1sp" />
+                android:autoSizeTextType="uniform" android:autoSizeMinTextSize="9sp"
+                android:autoSizeMaxTextSize="11sp" android:autoSizeStepGranularity="1sp" />
             <TextView android:id="@+id/usd_trend"
                 android:layout_width="8dp" android:layout_height="match_parent"
                 android:gravity="center" android:text="—" android:maxLines="1" android:textColor="#B7BDC4"
@@ -29,17 +29,17 @@
         <LinearLayout android:id="@+id/eur_row"
             android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1"
             android:gravity="center_vertical" android:contentDescription="@string/euro_history">
-            <ImageView android:layout_width="13dp" android:layout_height="13dp"
+            <ImageView android:layout_width="14dp" android:layout_height="14dp"
                 android:src="@drawable/eur_flag" android:scaleType="fitCenter"
                 android:importantForAccessibility="no" android:contentDescription="@null" />
             <TextView android:id="@+id/eur_price"
                 android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1"
                 android:layout_marginStart="2dp" android:gravity="start|center_vertical"
-                android:text="—" android:textSize="10sp" android:textStyle="bold"
+                android:text="—" android:textSize="11sp" android:textStyle="bold"
                 android:fontFamily="sans-serif" android:textColor="#FFFFFF"
                 android:includeFontPadding="false" android:maxLines="1" android:textDirection="ltr"
-                android:autoSizeTextType="uniform" android:autoSizeMinTextSize="8sp"
-                android:autoSizeMaxTextSize="10sp" android:autoSizeStepGranularity="1sp" />
+                android:autoSizeTextType="uniform" android:autoSizeMinTextSize="9sp"
+                android:autoSizeMaxTextSize="11sp" android:autoSizeStepGranularity="1sp" />
             <TextView android:id="@+id/eur_trend"
                 android:layout_width="8dp" android:layout_height="match_parent"
                 android:gravity="center" android:text="—" android:maxLines="1" android:textColor="#B7BDC4"
@@ -52,17 +52,17 @@
         <LinearLayout android:id="@+id/usdt_row"
             android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1"
             android:gravity="center_vertical" android:contentDescription="@string/usdt_history">
-            <ImageView android:layout_width="13dp" android:layout_height="13dp"
+            <ImageView android:layout_width="14dp" android:layout_height="14dp"
                 android:src="@drawable/usdt_icon" android:scaleType="fitCenter"
                 android:importantForAccessibility="no" android:contentDescription="@null" />
             <TextView android:id="@+id/usdt_price"
                 android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1"
                 android:layout_marginStart="2dp" android:gravity="start|center_vertical"
-                android:text="—" android:textSize="10sp" android:textStyle="bold"
+                android:text="—" android:textSize="11sp" android:textStyle="bold"
                 android:fontFamily="sans-serif" android:textColor="#FFFFFF"
                 android:includeFontPadding="false" android:maxLines="1" android:textDirection="ltr"
-                android:autoSizeTextType="uniform" android:autoSizeMinTextSize="8sp"
-                android:autoSizeMaxTextSize="10sp" android:autoSizeStepGranularity="1sp" />
+                android:autoSizeTextType="uniform" android:autoSizeMinTextSize="9sp"
+                android:autoSizeMaxTextSize="11sp" android:autoSizeStepGranularity="1sp" />
             <TextView android:id="@+id/usdt_trend"
                 android:layout_width="8dp" android:layout_height="match_parent"
                 android:gravity="center" android:text="—" android:maxLines="1" android:textColor="#B7BDC4"
@@ -71,17 +71,17 @@
         <LinearLayout android:id="@+id/btc_row"
             android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1"
             android:gravity="center_vertical" android:contentDescription="@string/btc_history">
-            <ImageView android:layout_width="13dp" android:layout_height="13dp"
+            <ImageView android:layout_width="14dp" android:layout_height="14dp"
                 android:src="@drawable/btc_icon" android:scaleType="fitCenter"
                 android:importantForAccessibility="no" android:contentDescription="@null" />
             <TextView android:id="@+id/btc_price"
                 android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1"
                 android:layout_marginStart="2dp" android:gravity="start|center_vertical"
-                android:text="—" android:textSize="10sp" android:textStyle="bold"
+                android:text="—" android:textSize="11sp" android:textStyle="bold"
                 android:fontFamily="sans-serif" android:textColor="#FFFFFF"
                 android:includeFontPadding="false" android:maxLines="1" android:textDirection="ltr"
-                android:autoSizeTextType="uniform" android:autoSizeMinTextSize="8sp"
-                android:autoSizeMaxTextSize="10sp" android:autoSizeStepGranularity="1sp" />
+                android:autoSizeTextType="uniform" android:autoSizeMinTextSize="9sp"
+                android:autoSizeMaxTextSize="11sp" android:autoSizeStepGranularity="1sp" />
             <TextView android:id="@+id/btc_trend"
                 android:layout_width="8dp" android:layout_height="match_parent"
                 android:gravity="center" android:text="—" android:maxLines="1" android:textColor="#B7BDC4"
@@ -91,8 +91,8 @@
     <TextView android:id="@+id/updated"
         android:layout_width="match_parent" android:layout_height="wrap_content"
         android:gravity="center" android:layout_marginTop="1dp"
-        android:text="—" android:textSize="8sp" android:textColor="#B7BDC4"
+        android:text="—" android:textSize="9sp" android:textColor="#B7BDC4"
         android:includeFontPadding="false" android:maxLines="1" android:textDirection="ltr"
         android:autoSizeTextType="uniform" android:autoSizeMinTextSize="7sp"
-        android:autoSizeMaxTextSize="8sp" android:autoSizeStepGranularity="1sp" />
+        android:autoSizeMaxTextSize="9sp" android:autoSizeStepGranularity="1sp" />
 </LinearLayout>
