@@ -10,9 +10,11 @@ public final class WidgetSummary {
     }
 
     /** Use the older displayed quote, not a fetch time that could hide stale/partial data. */
-    public static long updatedAt(Price usd, Price euro) {
-        if (usd == null) return euro == null ? 0 : euro.sourceTime;
-        if (euro == null) return usd.sourceTime;
-        return Math.min(usd.sourceTime, euro.sourceTime);
+    public static long updatedAt(Price... prices) {
+        long oldest = 0;
+        for (Price price : prices) {
+            if (price != null && (oldest == 0 || price.sourceTime < oldest)) oldest = price.sourceTime;
+        }
+        return oldest;
     }
 }

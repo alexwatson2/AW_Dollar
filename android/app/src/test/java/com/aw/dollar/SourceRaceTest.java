@@ -34,6 +34,18 @@ public class SourceRaceTest {
         assertTrue(winners.contains("iranmarket:usd"));
         assertFalse(winners.contains("nerkhsanj:usd"));
     }
+    @Test public void tetherFailureDoesNotBlockOtherCurrencies() throws Exception {
+        Set<String> won = SourceRace.run(Arrays.asList(
+                () -> result(PriceSource.IRAN_MARKET,"usdt",false),
+                () -> result(PriceSource.IRAN_MARKET,"usd",true),
+                () -> result(PriceSource.NERKHSANJ,"euro",true)),1000,new SourceRace.Listener() {
+            public boolean eligible(Price p) { return true; }
+            public void completed(SourceResult r,boolean winner) { }
+        });
+        assertTrue(won.contains("usd"));
+        assertTrue(won.contains("euro"));
+        assertFalse(won.contains("usdt"));
+    }
     @Test public void rejectedOldDataFallsThroughToNextSource() throws Exception {
         List<String> winners = new ArrayList<>();
         SourceRace.run(Arrays.asList(() -> result(PriceSource.PRICETODAY,"usd",true),

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Layout contract checks for the single, compact two-currency widget (no SDK needed)."""
+"""Layout contract checks for the single, compact three-currency widget (no SDK needed)."""
 from pathlib import Path
 import unittest
 import xml.etree.ElementTree as ET
@@ -16,17 +16,17 @@ class CompactWidgetTest(unittest.TestCase):
                           for m in receiver.findall("meta-data"))]
         self.assertEqual([".DollarWidget"], [r.get(A + "name") for r in widgets])
 
-    def test_default_size_is_two_by_one(self):
+    def test_default_size_is_two_by_two(self):
         provider = ET.parse(MAIN / "res/xml/dollar_widget.xml").getroot()
         self.assertEqual("2", provider.get(A + "targetCellWidth"))
-        self.assertEqual("1", provider.get(A + "targetCellHeight"))
-        self.assertEqual("horizontal", provider.get(A + "resizeMode"))
+        self.assertEqual("2", provider.get(A + "targetCellHeight"))
+        self.assertEqual("horizontal|vertical", provider.get(A + "resizeMode"))
 
     def test_only_prices_trend_icons_and_date_are_visible_text(self):
         layout = ET.parse(MAIN / "res/layout/price_widget.xml")
         labels = list(layout.iter("TextView"))
         self.assertEqual({"@+id/usd_price", "@+id/eur_price", "@+id/usd_trend",
-                          "@+id/eur_trend", "@+id/updated"},
+                          "@+id/eur_trend", "@+id/usdt_price", "@+id/usdt_trend", "@+id/updated"},
                          {label.get(A + "id") for label in labels})
         self.assertTrue(all(label.get(A + "maxLines") == "1" for label in labels))
         # No dummy market prices or explanatory first-quote text in the preview.
@@ -35,10 +35,11 @@ class CompactWidgetTest(unittest.TestCase):
     def test_each_currency_has_its_own_row_and_flag(self):
         layout = ET.parse(MAIN / "res/layout/price_widget.xml")
         nodes = {node.get(A + "id"): node for node in layout.iter()}
-        for row, flag in (("usd_row", "usd_flag"), ("eur_row", "eur_flag")):
+        for row, flag in (("usd_row", "usd_flag"), ("eur_row", "eur_flag"), ("usdt_row", "usdt_icon")):
             image = nodes["@+id/" + row].find("ImageView")
             self.assertEqual("@drawable/" + flag, image.get(A + "src"))
-            self.assertTrue((MAIN / "res/drawable-nodpi" / (flag + ".png")).is_file())
+            folder, extension = ("drawable", ".xml") if flag == "usdt_icon" else ("drawable-nodpi", ".png")
+            self.assertTrue((MAIN / "res" / folder / (flag + extension)).is_file())
 
 
 if __name__ == "__main__":
